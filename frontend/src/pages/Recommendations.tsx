@@ -96,18 +96,21 @@ const Recommendations: React.FC = () => {
       // Don't trigger if modal is open
       if (swipeDiscover.ratingModal.isOpen) return;
 
+      // Use triggerSwipe from SwipeCardStack for animation
+      const triggerSwipe = (window as any).__triggerSwipe;
+
       switch (e.key) {
         case 'ArrowLeft':
           e.preventDefault();
-          swipeDiscover.swipe('left');
+          if (triggerSwipe) triggerSwipe('left');
           break;
         case 'ArrowRight':
           e.preventDefault();
-          swipeDiscover.swipe('right');
+          if (triggerSwipe) triggerSwipe('right');
           break;
         case 'ArrowDown':
           e.preventDefault();
-          swipeDiscover.skip();
+          if (triggerSwipe) triggerSwipe('down');
           break;
         case 'z':
         case 'Z':
