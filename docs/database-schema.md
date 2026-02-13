@@ -172,8 +172,9 @@ lastUpdated: "2024-01-15T10:30:00.000Z"
 **Indexes:**
 - Primary key on `id`
 - Composite unique index on `(userId, movieId)` - prevents duplicate ratings
-- Index on `userId` for fast user queries
-- Index on `movieId` for foreign key
+- **@@index([userId])** - Fast user queries
+- **@@index([movieId])** - Fast movie lookups
+- **@@index([rating])** - Fast rating filters
 
 **Relations:**
 - Belongs to `User` (cascade delete when user deleted)
@@ -218,8 +219,8 @@ updatedAt: "2024-01-16T14:20:00.000Z"
 **Indexes:**
 - Primary key on `id`
 - Composite unique index on `(userId, movieId)` - prevents duplicates
-- Index on `userId` for fast user queries
-- Index on `movieId` for foreign key
+- **@@index([userId])** - Fast user queries
+- **@@index([movieId])** - Fast movie lookups
 
 **Relations:**
 - Belongs to `User` (cascade delete)
@@ -403,12 +404,26 @@ Opens GUI at `http://localhost:5555`
 
 **Prisma transactions for atomic operations:**
 
+The watchlist "mark as watched" operation uses transactions to ensure atomicity:
+
 ```typescript
-await prisma.$transaction([
-  prisma.watchlist.delete({ where: { id } }),
-  prisma.userMovie.create({ data: {...} })
-]);
+// Used in watchlist.ts for markWatched endpoint
+await prisma.$transaction(async (tx) => {
+  // Create the user movie entry
+  const userMovie = await tx.userMovie.upsert({
+    where: { userId_movieId: { userId, movieId } },
+    update: { rating: validatedRating, watched: true },
+    create: { userId, movieId, rating: validatedRating, watched: true }
+  });
+
+  // Delete from watchlist
+  await tx.watchlist.delete({ where: { id } });
+
+  return userMovie;
+});
 ```
+
+This ensures both operations succeed or both fail - no partial state.
 
 ### Cascade Deletes
 
@@ -433,6 +448,18 @@ await prisma.$transaction([
 - All unique fields
 - All foreign keys
 - All unique compound constraints
+
+**Custom Indexes Added:**
+```prisma
+// UserMovie model
+@@index([userId])   // Fast user movie lookups
+@@index([movieId])  // Fast movie lookups
+@@index([rating])   // Fast rating filters
+
+// Watchlist model
+@@index([userId])   // Fast user watchlist lookups
+@@index([movieId])  // Fast movie lookups
+```
 
 **Query Optimization:**
 - Use `select` to limit fields

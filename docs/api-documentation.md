@@ -2,10 +2,40 @@
 
 ## Base URL
 
-**Development:** `http://localhost:5000`
-**Production:** Your deployed backend URL
+**Development:** `http://localhost:5001` (port 5000 often used by macOS)
+**Production:** `https://movie-watchlist-production.up.railway.app`
 
 All endpoints are prefixed with `/api`
+
+## Health Check
+
+**GET** `/health`
+
+Returns server and database status.
+
+**Response (200):**
+```json
+{
+  "status": "ok",
+  "message": "Movie Watchlist API",
+  "checks": {
+    "database": "healthy",
+    "timestamp": "2024-01-15T10:30:00.000Z"
+  }
+}
+```
+
+**Response (503 - degraded):**
+```json
+{
+  "status": "degraded",
+  "message": "Movie Watchlist API",
+  "checks": {
+    "database": "unhealthy",
+    "timestamp": "2024-01-15T10:30:00.000Z"
+  }
+}
+```
 
 ## Authentication
 
@@ -757,6 +787,28 @@ Returns empty array if user hasn't rated enough movies.
 ---
 
 ## Rate Limiting
+
+### Application Rate Limits
+
+The API implements rate limiting to protect against abuse:
+
+**General API Endpoints:**
+- **100 requests per 15 minutes** per IP
+- Error Response (429):
+```json
+{
+  "error": "Too many requests, please try again later."
+}
+```
+
+**Authentication Endpoints** (`/api/auth/*`):
+- **10 requests per 15 minutes** per IP (stricter for brute force protection)
+- Error Response (429):
+```json
+{
+  "error": "Too many authentication attempts, please try again later."
+}
+```
 
 ### TMDB API Limits
 - Free tier: 1000 requests/day

@@ -34,6 +34,9 @@ A full-stack web application for managing movie watchlists with personalized rec
   - Movie data caching (reduces API calls)
   - Responsive dark-themed UI
   - Type-safe codebase (TypeScript throughout)
+  - Rate limiting (100 req/15min general, 10 req/15min auth)
+  - Security headers (Helmet.js)
+  - Database transactions for atomic operations
 
 ### Technology Stack
 
@@ -41,8 +44,10 @@ A full-stack web application for managing movie watchlists with personalized rec
 - Node.js + Express.js
 - TypeScript
 - PostgreSQL + Prisma ORM
-- JWT authentication
+- JWT authentication (no hardcoded fallback)
 - TMDB API integration
+- express-rate-limit (rate limiting)
+- Helmet.js (security headers)
 
 **Frontend:**
 - React 18 + TypeScript
@@ -123,8 +128,10 @@ npm run dev
 
 **4. Access Application:**
 - Frontend: http://localhost:5173
-- Backend: http://localhost:5000
-- Health check: http://localhost:5000/health
+- Backend: http://localhost:5001 (port 5000 often used by macOS)
+- Health check: http://localhost:5001/health
+
+**Note:** On macOS, port 5000 is used by Control Center. Use port 5001 instead.
 
 ---
 
@@ -519,15 +526,13 @@ npm run prisma:generate
 - Test key: `curl "https://api.themoviedb.org/3/movie/550?api_key=YOUR_KEY"`
 
 **Problem:** `Port 5000 already in use`
+
+On macOS, port 5000 is used by Control Center (AirPlay Receiver). Use port 5001 instead:
 ```bash
-# Find process using port 5000
-lsof -ti:5000
-
-# Kill process
-kill -9 $(lsof -ti:5000)
-
-# Or change port in .env
+# Change port in .env
 PORT=5001
+
+# Or disable AirPlay Receiver in System Settings → General → AirDrop & Handoff
 ```
 
 ### Frontend Issues
@@ -730,13 +735,13 @@ const movies: UserMovie[] = response.data;
 
 ```bash
 # Server
-PORT=5000                    # Backend port
+PORT=5001                    # Backend port (5000 often used by macOS)
 NODE_ENV=development         # Environment (development/production)
 
 # Database
 DATABASE_URL="postgresql://user:password@localhost:5432/movie_watchlist?schema=public"
 
-# Authentication
+# Authentication (REQUIRED - no fallback)
 JWT_SECRET="<64-char-hex>"   # Generate: openssl rand -hex 64
 
 # TMDB API
@@ -747,11 +752,13 @@ TMDB_BASE_URL="https://api.themoviedb.org/3"
 FRONTEND_URL="http://localhost:5173"  # Frontend URL for CORS
 ```
 
+**Important:** `JWT_SECRET` is required. The application will fail to start if not set (no hardcoded fallback for security).
+
 ### Frontend (.env)
 
 ```bash
 # API
-VITE_API_URL="http://localhost:5000"  # Backend URL
+VITE_API_URL="http://localhost:5001"  # Backend URL
 ```
 
 ---
@@ -865,8 +872,32 @@ For questions or issues:
 
 ---
 
-**Last Updated:** 2024-01-15
+**Last Updated:** 2025-02-13
 
-**Version:** 1.0.0
+**Version:** 1.1.0
 
 **Maintainers:** See [README.md](README.md)
+
+---
+
+## Implemented Security & Performance Features
+
+The following features are already implemented in the codebase:
+
+### Backend Security
+- **Rate Limiting:** 100 requests/15min (general), 10 requests/15min (auth)
+- **Security Headers:** Helmet.js middleware enabled
+- **JWT Security:** No hardcoded fallback - fails fast if `JWT_SECRET` not set
+- **Input Validation:** Email format, rating enum, priority enum, pagination limits
+- **Database Transactions:** Atomic operations for watchlist → rated movies
+
+### Frontend UX
+- **Error States:** Retry buttons on API failures
+- **Optimistic Updates:** With automatic rollback on error
+- **Accessibility:** aria-labels on icon buttons, aria-hidden on decorative emojis
+- **React Router Links:** No full page reloads
+
+### Performance
+- **Parallel API Fetching:** Recommendations use `Promise.all()` for 3-5x faster load
+- **Database Indexes:** Custom indexes on userId, movieId, rating for fast queries
+- **Movie Caching:** 30-day cache reduces TMDB API calls

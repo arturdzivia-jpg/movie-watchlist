@@ -59,7 +59,9 @@ This guide covers deploying the Movie Watchlist application to production. The a
 5. **Configure Build Settings**
    - Root directory: `/backend`
    - Build command: `npm install && npx prisma generate && npm run build`
-   - Start command: `npx prisma migrate deploy && npm start`
+   - Start command: `npx prisma db push && npm start`
+
+   **Note:** We use `prisma db push` instead of `migrate deploy` for simpler schema sync on Railway.
 
 6. **Deploy**
    - Railway auto-deploys on git push
@@ -67,10 +69,10 @@ This guide covers deploying the Movie Watchlist application to production. The a
    - Get your backend URL from Railway dashboard
 
 7. **Run Database Migrations**
-   - Migrations run automatically via start command
+   - Schema sync runs automatically via start command (`prisma db push`)
    - Or manually via Railway CLI:
      ```bash
-     railway run npx prisma migrate deploy
+     railway run npx prisma db push
      ```
 
 **Generate JWT Secret:**
@@ -274,8 +276,11 @@ node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
 - [ ] Database migrations applied
 - [ ] Environment variables set correctly
 - [ ] Health check endpoint accessible (`/health`)
+- [ ] Health check returns: `{"status":"ok","checks":{"database":"healthy"}}`
 - [ ] CORS configured for frontend URL
-- [ ] JWT secret is secure and random
+- [ ] JWT secret is secure and random (no hardcoded fallback)
+- [ ] Rate limiting active (test with rapid requests)
+- [ ] Security headers present (check browser dev tools → Network → Response Headers)
 - [ ] Logs accessible and monitored
 
 ### Frontend
@@ -505,24 +510,47 @@ jobs:
 
 ## Security Checklist
 
-- [ ] HTTPS enabled (both frontend and backend)
-- [ ] Environment variables secured (not in code)
-- [ ] JWT secret is strong and unique
-- [ ] CORS properly configured
-- [ ] Rate limiting enabled (optional)
-- [ ] SQL injection prevented (Prisma does this)
-- [ ] XSS protection (React does this)
+- [x] HTTPS enabled (both frontend and backend)
+- [x] Environment variables secured (not in code)
+- [x] JWT secret is strong and unique (no hardcoded fallback)
+- [x] CORS properly configured
+- [x] Rate limiting enabled (express-rate-limit)
+- [x] SQL injection prevented (Prisma does this)
+- [x] XSS protection (React does this)
 - [ ] Dependencies updated regularly
-- [ ] Security headers configured
+- [x] Security headers configured (Helmet.js)
 
-**Add Security Headers:**
-```bash
-npm install helmet
+### Implemented Security Features
+
+**Rate Limiting (Already Implemented):**
+```typescript
+// General API: 100 requests per 15 minutes
+// Auth endpoints: 10 requests per 15 minutes
+import rateLimit from 'express-rate-limit';
+
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: { error: 'Too many requests' }
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { error: 'Too many login attempts' }
+});
 ```
+
+**Security Headers (Already Implemented):**
 ```typescript
 import helmet from 'helmet';
 app.use(helmet());
 ```
+
+**JWT Security (Already Implemented):**
+- No hardcoded fallback secrets
+- Application fails fast if `JWT_SECRET` not set
+- 7-day token expiration
 
 ---
 

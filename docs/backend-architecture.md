@@ -216,19 +216,40 @@ See [Recommendation Algorithm](./recommendation-algorithm.md) for details.
 ### Authentication
 - JWT-based stateless authentication
 - Tokens expire after 7 days
-- Secure password hashing with bcrypt
+- Secure password hashing with bcrypt (v3.0.2+)
 - Salt rounds: 10
+- **No hardcoded fallback secrets** - JWT_SECRET environment variable required
+
+### Rate Limiting
+- **General API**: 100 requests per 15 minutes
+- **Auth endpoints**: 10 requests per 15 minutes (brute force protection)
+- Implemented with `express-rate-limit` middleware
+- Returns 429 status with error message when exceeded
+
+### Security Headers
+- **Helmet.js** middleware enabled
+- X-Frame-Options: Prevents clickjacking
+- X-Content-Type-Options: Prevents MIME sniffing
+- XSS Protection headers
+- Content Security Policy (CSP)
+
+### Input Validation
+- **Email validation**: Regex check for valid format
+- **Username validation**: 3-50 character length
+- **Rating validation**: Null check before string operations
+- **Priority validation**: Enum value checking
+- **Pagination validation**: Clamped to 1-500 range
 
 ### Data Protection
 - User-specific data isolation (all queries filter by userId)
 - Cascade delete on user removal
-- Input validation on all endpoints
 - SQL injection protection via Prisma
+- **Database transactions** for atomic operations (watchlist → rated movies)
 
 ### CORS Configuration
 - Configured for frontend URL only
 - Credentials allowed for cookie support
-- Production should use environment-specific URLs
+- Production uses environment-specific URLs
 
 ## Error Handling
 
@@ -270,11 +291,17 @@ FRONTEND_URL=http://localhost:5173 # Frontend URL for CORS
 - Automatic cache refresh when outdated
 
 ### Database Indexes
-Prisma automatically creates indexes on:
+Prisma creates indexes on:
 - Primary keys
 - Unique fields (email, username, tmdbId)
 - Foreign keys
 - Compound unique constraints (userId + movieId)
+- **Custom indexes added:**
+  - `UserMovie.userId` - Fast user movie lookups
+  - `UserMovie.movieId` - Fast movie lookups
+  - `UserMovie.rating` - Fast rating filters
+  - `Watchlist.userId` - Fast user watchlist lookups
+  - `Watchlist.movieId` - Fast movie lookups
 
 ### Query Optimization
 - Uses Prisma's type-safe queries
@@ -376,10 +403,17 @@ npx prisma migrate deploy
 - Track API response times
 - Log errors to external service (Sentry, LogRocket)
 
+## Implemented Security Features
+
+The following security features are now implemented:
+- **Rate limiting** per IP (express-rate-limit)
+- **Security headers** (helmet.js)
+- **Input validation** on all endpoints
+- **Database transactions** for atomic operations
+
 ## Future Enhancements
 
 ### Features
-- Rate limiting middleware
 - Request caching with Redis
 - WebSocket support for real-time updates
 - Background jobs for recommendation generation
@@ -388,13 +422,10 @@ npx prisma migrate deploy
 
 ### Performance
 - Query result pagination
-- Database connection pooling
 - API response compression
 - CDN for static assets
 
 ### Security
-- Rate limiting per user/IP
-- Request validation with Joi/Zod
 - CSRF protection
-- Security headers (helmet.js)
+- Request validation with Joi/Zod
 - API versioning

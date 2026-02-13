@@ -464,9 +464,10 @@ navigate('/dashboard');
 
 ### Error Handling
 - Try-catch in async operations
-- Error message display
-- Fallback UI for errors
+- **Error state with retry button** on all pages
+- Inline error messages that auto-dismiss
 - User-friendly error messages
+- Error rollback for optimistic updates
 
 ### Empty States
 - Custom messages for empty data
@@ -482,8 +483,15 @@ navigate('/dashboard');
 
 ### Optimistic Updates
 - Immediate UI updates
-- Revert on error
+- **Automatic rollback on error** - previous state restored
 - Better perceived performance
+- Error notifications shown to user
+
+### Accessibility
+- **aria-labels** on all icon buttons
+- **aria-hidden** on decorative emojis
+- Screen reader labels for form controls
+- Semantic HTML structure
 
 ## Performance Optimizations
 
@@ -634,10 +642,18 @@ Set in deployment platform:
 
 ### UX Improvements
 - Skeleton loading screens
-- Toast notifications
+- Toast notifications (replace browser alerts)
 - Drag-and-drop for watchlist ordering
 - Keyboard shortcuts
-- Accessibility improvements (ARIA labels)
+- ~~Accessibility improvements (ARIA labels)~~ - **IMPLEMENTED**
+
+## Implemented Features
+
+The following UX features are now implemented:
+- **Error states with retry buttons** on Dashboard, MyMovies, Watchlist
+- **Optimistic updates with rollback** on rating changes and deletions
+- **React Router Link components** instead of anchor tags (no page reloads)
+- **Accessibility improvements**: aria-labels on icon buttons, aria-hidden on emojis
 
 ### Developer Experience
 - Storybook for component library
