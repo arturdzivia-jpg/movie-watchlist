@@ -2,6 +2,11 @@
 
 > **Quick Start for Claude/AI Assistants**: This document provides comprehensive instructions for understanding, modifying, and extending the Movie Watchlist application.
 
+> **Important**: After making code changes, always commit and push to apply them:
+> ```bash
+> git add <changed-files> && git commit -m "description" && git push
+> ```
+
 ## Table of Contents
 
 1. [Project Overview](#project-overview)
