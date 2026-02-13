@@ -21,6 +21,7 @@ export const useSwipeDiscover = (category: DiscoverCategory = 'for_you', filters
   const [isProcessing, setIsProcessing] = useState(false);
   const [stats, setStats] = useState<SwipeSessionStats>(initialStats);
   const [error, setError] = useState<string | null>(null);
+  const [prefetchFailed, setPrefetchFailed] = useState(false); // Prevent retry spam
   const [seenIds, setSeenIds] = useState<Set<number>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
   const [ratingModal, setRatingModal] = useState<RatingModalState>({
@@ -59,6 +60,7 @@ export const useSwipeDiscover = (category: DiscoverCategory = 'for_you', filters
       setSeenIds(new Set());
       setCurrentPage(1);
       setError(null);
+      setPrefetchFailed(false); // Reset prefetch error state
       setRatingModal({ isOpen: false, movie: null });
     }
   }, [category, filters]);
@@ -86,7 +88,8 @@ export const useSwipeDiscover = (category: DiscoverCategory = 'for_you', filters
   // Pre-fetch when running low on cards
   useEffect(() => {
     const prefetch = async () => {
-      if (cardStack.length <= PREFETCH_THRESHOLD && !isPrefetching && !isLoading) {
+      // Don't retry if prefetch already failed for this session
+      if (cardStack.length <= PREFETCH_THRESHOLD && !isPrefetching && !isLoading && !prefetchFailed) {
         setIsPrefetching(true);
         try {
           const nextPage = currentPage + 1;
@@ -102,13 +105,15 @@ export const useSwipeDiscover = (category: DiscoverCategory = 'for_you', filters
           }
         } catch (err) {
           console.error('Pre-fetch failed:', err);
+          // Mark prefetch as failed to prevent infinite retry loop
+          setPrefetchFailed(true);
         } finally {
           setIsPrefetching(false);
         }
       }
     };
     prefetch();
-  }, [cardStack.length, isPrefetching, isLoading, loadMovies, currentPage]);
+  }, [cardStack.length, isPrefetching, isLoading, loadMovies, currentPage, prefetchFailed]);
 
   // Update stats helper
   const updateStats = useCallback((type: 'wantToWatch' | 'notInterested' | 'alreadyWatched' | 'skipped', increment: number) => {
@@ -332,6 +337,7 @@ export const useSwipeDiscover = (category: DiscoverCategory = 'for_you', filters
     setStats(initialStats);
     setSeenIds(new Set());
     setError(null);
+    setPrefetchFailed(false);
     setRatingModal({ isOpen: false, movie: null });
   }, []);
 
