@@ -16,7 +16,42 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Security middleware
+// CORS middleware - MUST be before other middleware to handle preflight requests
+// Supports multiple origins via comma-separated FRONTEND_URL
+// Supports wildcards like https://movie-watchlist-git-*.vercel.app
+const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:5173')
+  .split(',')
+  .map(origin => origin.trim());
+
+const isOriginAllowed = (origin: string): boolean => {
+  return allowedOrigins.some(allowed => {
+    if (allowed.includes('*')) {
+      // Convert wildcard pattern to regex
+      const pattern = allowed.replace(/\./g, '\\.').replace(/\*/g, '.*');
+      return new RegExp(`^${pattern}$`).test(origin);
+    }
+    return allowed === origin;
+  });
+};
+
+// Apply CORS first - before helmet, rate limiting, everything
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+
+    if (isOriginAllowed(origin)) {
+      callback(null, true);
+    } else {
+      console.warn(`CORS blocked origin: ${origin}. Allowed: ${allowedOrigins.join(', ')}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  maxAge: 86400 // Cache preflight for 24 hours
+}));
+
+// Security middleware (after CORS)
 app.use(helmet());
 
 // Rate limiting - general
@@ -35,38 +70,6 @@ const authLimiter = rateLimit({
 
 // Apply general rate limiting to all routes
 app.use(generalLimiter);
-
-// CORS middleware - supports multiple origins via comma-separated FRONTEND_URL
-// Supports wildcards like https://movie-watchlist-git-*.vercel.app
-const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:5173')
-  .split(',')
-  .map(origin => origin.trim());
-
-const isOriginAllowed = (origin: string): boolean => {
-  return allowedOrigins.some(allowed => {
-    if (allowed.includes('*')) {
-      // Convert wildcard pattern to regex
-      const pattern = allowed.replace(/\./g, '\\.').replace(/\*/g, '.*');
-      return new RegExp(`^${pattern}$`).test(origin);
-    }
-    return allowed === origin;
-  });
-};
-
-app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, curl, etc.)
-    if (!origin) return callback(null, true);
-
-    if (isOriginAllowed(origin)) {
-      callback(null, true);
-    } else {
-      console.warn(`CORS blocked origin: ${origin}. Allowed: ${allowedOrigins.join(', ')}`);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true
-}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
