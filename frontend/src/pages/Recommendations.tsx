@@ -173,7 +173,6 @@ const Recommendations: React.FC = () => {
   const handleRate = async (tmdbId: number, rating: Rating) => {
     try {
       await userMoviesAPI.add(tmdbId, rating, true);
-      alert('Movie added to your list!');
       removeMovieFromCaches(tmdbId);
     } catch (error: any) {
       console.error('Failed to rate movie:', error);
