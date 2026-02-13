@@ -9,7 +9,7 @@ interface SwipeOverlayProps {
 const SwipeOverlay: React.FC<SwipeOverlayProps> = ({ direction, progress }) => {
   if (!direction || progress === 0) return null;
 
-  const overlayConfig = {
+  const overlayConfig: Record<SwipeDirection, { bg: string; border: string; icon: string; text: string; textColor: string; position: string }> = {
     left: {
       bg: 'bg-red-500/30',
       border: 'border-red-500',
@@ -33,6 +33,14 @@ const SwipeOverlay: React.FC<SwipeOverlayProps> = ({ direction, progress }) => {
       text: 'WATCHLIST',
       textColor: 'text-blue-500',
       position: 'top-4 left-1/2 -translate-x-1/2',
+    },
+    down: {
+      bg: 'bg-slate-500/30',
+      border: 'border-slate-400',
+      icon: '&#8594;', // arrow
+      text: 'SKIP',
+      textColor: 'text-slate-300',
+      position: 'bottom-4 left-1/2 -translate-x-1/2',
     },
   };
 

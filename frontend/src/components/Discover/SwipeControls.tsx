@@ -5,6 +5,7 @@ interface SwipeControlsProps {
   onSwipeLeft: () => void;
   onSwipeRight: () => void;
   onSwipeUp: () => void;
+  onSkip: () => void;
   onRate: (rating: Rating) => void;
   onUndo: () => void;
   canUndo: boolean;
@@ -15,6 +16,7 @@ const SwipeControls: React.FC<SwipeControlsProps> = ({
   onSwipeLeft,
   onSwipeRight,
   onSwipeUp,
+  onSkip,
   onRate,
   onUndo,
   canUndo,
@@ -112,6 +114,30 @@ const SwipeControls: React.FC<SwipeControlsProps> = ({
             strokeLinejoin="round"
             strokeWidth={2}
             d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
+          />
+        </svg>
+      </button>
+
+      {/* Skip */}
+      <button
+        onClick={onSkip}
+        disabled={isProcessing}
+        className={`${buttonBase} w-12 h-12 bg-slate-700 hover:bg-slate-500 text-slate-400 hover:text-white border border-slate-600`}
+        aria-label="Skip movie"
+        title="Skip"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-5 w-5"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M13 5l7 7-7 7M5 5l7 7-7 7"
           />
         </svg>
       </button>

@@ -12,6 +12,7 @@ const initialStats: SwipeSessionStats = {
   ok: 0,
   superLiked: 0,
   watchlisted: 0,
+  skipped: 0,
   total: 0,
 };
 
@@ -91,13 +92,15 @@ export const useSwipeDiscover = (): UseSwipeDiscoverReturn => {
         return 'LIKE';
       case 'up':
         return null; // Watchlist, not a rating
+      case 'down':
+        return null; // Skip, not a rating
       default:
         return null;
     }
   };
 
   // Update stats based on action
-  const updateStats = useCallback((action: Rating | 'WATCHLIST', increment: number) => {
+  const updateStats = useCallback((action: Rating | 'WATCHLIST' | 'SKIP', increment: number) => {
     setStats((prev) => {
       const updated = { ...prev };
       updated.total += increment;
@@ -116,6 +119,9 @@ export const useSwipeDiscover = (): UseSwipeDiscoverReturn => {
           break;
         case 'WATCHLIST':
           updated.watchlisted += increment;
+          break;
+        case 'SKIP':
+          updated.skipped += increment;
           break;
       }
       return updated;
@@ -138,7 +144,20 @@ export const useSwipeDiscover = (): UseSwipeDiscoverReturn => {
       try {
         let apiRecordId: string | undefined;
 
-        if (direction === 'up') {
+        if (direction === 'down') {
+          // Skip - no API call, just remove from stack
+          updateStats('SKIP', 1);
+          // Add to undo history (skip actions can be undone locally)
+          const swipeAction: SwipeAction = {
+            movie,
+            action: 'SKIP',
+            apiRecordId: undefined,
+            timestamp: Date.now(),
+          };
+          setSwipeHistory((prev) => [swipeAction, ...prev].slice(0, MAX_UNDO_HISTORY));
+          setIsProcessing(false);
+          return;
+        } else if (direction === 'up') {
           // Add to watchlist
           const response = await watchlistAPI.add(movie.id);
           apiRecordId = response.data.id;
@@ -235,11 +254,11 @@ export const useSwipeDiscover = (): UseSwipeDiscoverReturn => {
     setIsProcessing(true);
 
     try {
-      // Delete the API record
+      // Delete the API record (skip actions have no API record)
       if (lastAction.apiRecordId) {
         if (lastAction.action === 'WATCHLIST') {
           await watchlistAPI.remove(lastAction.apiRecordId);
-        } else {
+        } else if (lastAction.action !== 'SKIP') {
           await userMoviesAPI.delete(lastAction.apiRecordId);
         }
       }
@@ -282,6 +301,12 @@ export const useSwipeDiscover = (): UseSwipeDiscoverReturn => {
     }
   }, [isLoading, isPrefetching, loadRecommendations]);
 
+  // Skip current movie (no rating, no watchlist)
+  const skip = useCallback(async () => {
+    if (cardStack.length === 0 || isProcessing) return;
+    await swipe('down');
+  }, [cardStack.length, isProcessing, swipe]);
+
   // Reset session
   const reset = useCallback(() => {
     setCardStack([]);
@@ -302,6 +327,7 @@ export const useSwipeDiscover = (): UseSwipeDiscoverReturn => {
     canUndo: swipeHistory.length > 0,
     swipe,
     rateWithButton,
+    skip,
     undo,
     loadMore,
     reset,

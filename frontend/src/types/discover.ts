@@ -1,8 +1,8 @@
 import { Recommendation, Rating } from '../services/api';
 
-export type SwipeDirection = 'left' | 'right' | 'up';
+export type SwipeDirection = 'left' | 'right' | 'up' | 'down';
 
-export type SwipeActionType = Rating | 'WATCHLIST';
+export type SwipeActionType = Rating | 'WATCHLIST' | 'SKIP';
 
 export interface SwipeAction {
   movie: Recommendation;
@@ -17,6 +17,7 @@ export interface SwipeSessionStats {
   ok: number;
   superLiked: number;
   watchlisted: number;
+  skipped: number;
   total: number;
 }
 
@@ -42,6 +43,7 @@ export interface UseSwipeDiscoverReturn {
   canUndo: boolean;
   swipe: (direction: SwipeDirection) => Promise<void>;
   rateWithButton: (rating: Rating) => Promise<void>;
+  skip: () => Promise<void>;
   undo: () => Promise<void>;
   loadMore: () => Promise<void>;
   reset: () => void;

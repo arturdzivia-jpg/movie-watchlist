@@ -64,6 +64,8 @@ const SwipeCardStack: React.FC<SwipeCardStackProps> = ({
       direction = 'left';
     } else if (currentY < -SWIPE_THRESHOLD) {
       direction = 'up';
+    } else if (currentY > SWIPE_THRESHOLD) {
+      direction = 'down';
     }
 
     if (direction) {
@@ -166,6 +168,8 @@ const SwipeCardStack: React.FC<SwipeCardStackProps> = ({
         return 'translateX(150%) rotate(30deg)';
       case 'up':
         return 'translateY(-150%) rotate(0deg)';
+      case 'down':
+        return 'translateY(150%) rotate(0deg)';
       default:
         return '';
     }
@@ -181,6 +185,8 @@ const SwipeCardStack: React.FC<SwipeCardStackProps> = ({
         return { text: 'NOPE', color: 'bg-red-500/40', textColor: 'text-red-500', borderColor: 'border-red-500' };
       } else if (currentY < -50) {
         return { text: 'WATCHLIST', color: 'bg-blue-500/40', textColor: 'text-blue-500', borderColor: 'border-blue-500' };
+      } else if (currentY > 50) {
+        return { text: 'SKIP', color: 'bg-slate-500/40', textColor: 'text-slate-300', borderColor: 'border-slate-400' };
       }
     }
     return null;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { recommendationsAPI, userMoviesAPI, watchlistAPI, Recommendation, Rating, moviesAPI, TMDBMovie } from '../services/api';
 import MovieCard from '../components/Movies/MovieCard';
 import { SwipeCardStack, SwipeControls } from '../components/Discover';
@@ -6,6 +6,7 @@ import { useSwipeDiscover } from '../hooks/useSwipeDiscover';
 import { SwipeDirection } from '../types/discover';
 
 type ViewMode = 'grid' | 'swipe';
+const GRID_LOAD_COUNT = 20;
 
 const Recommendations: React.FC = () => {
   // Grid view state
@@ -13,8 +14,12 @@ const Recommendations: React.FC = () => {
   const [searchResults, setSearchResults] = useState<TMDBMovie[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [activeTab, setActiveTab] = useState<'recommended' | 'search'>('recommended');
+  const [seenGridIds, setSeenGridIds] = useState<Set<number>>(new Set());
+  const [hasMoreRecommendations, setHasMoreRecommendations] = useState(true);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
 
   // View mode state (persisted to localStorage)
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
@@ -32,22 +37,67 @@ const Recommendations: React.FC = () => {
 
   // Load grid recommendations
   useEffect(() => {
-    if (viewMode === 'grid' && activeTab === 'recommended') {
-      loadRecommendations();
+    if (viewMode === 'grid' && activeTab === 'recommended' && recommendations.length === 0) {
+      loadRecommendations(true);
     }
   }, [activeTab, viewMode]);
 
-  const loadRecommendations = async () => {
+  const loadRecommendations = useCallback(async (isInitial: boolean = true) => {
     try {
-      setIsLoading(true);
-      const response = await recommendationsAPI.get(20);
-      setRecommendations(response.data.recommendations);
+      if (isInitial) {
+        setIsLoading(true);
+        setSeenGridIds(new Set());
+      } else {
+        setIsLoadingMore(true);
+      }
+
+      const response = await recommendationsAPI.get(GRID_LOAD_COUNT);
+      const newMovies = response.data.recommendations;
+
+      if (isInitial) {
+        setRecommendations(newMovies);
+        setSeenGridIds(new Set(newMovies.map(m => m.id)));
+        setHasMoreRecommendations(newMovies.length >= GRID_LOAD_COUNT);
+      } else {
+        // Filter out already seen movies
+        const uniqueNewMovies = newMovies.filter(m => !seenGridIds.has(m.id));
+        if (uniqueNewMovies.length > 0) {
+          setRecommendations(prev => [...prev, ...uniqueNewMovies]);
+          setSeenGridIds(prev => {
+            const updated = new Set(prev);
+            uniqueNewMovies.forEach(m => updated.add(m.id));
+            return updated;
+          });
+        }
+        setHasMoreRecommendations(uniqueNewMovies.length >= GRID_LOAD_COUNT / 2);
+      }
     } catch (error) {
       console.error('Failed to load recommendations:', error);
     } finally {
       setIsLoading(false);
+      setIsLoadingMore(false);
     }
-  };
+  }, [seenGridIds]);
+
+  // Infinite scroll observer for grid view
+  useEffect(() => {
+    if (viewMode !== 'grid' || activeTab !== 'recommended') return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !isLoading && !isLoadingMore && hasMoreRecommendations) {
+          loadRecommendations(false);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (loadMoreRef.current) {
+      observer.observe(loadMoreRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [viewMode, activeTab, isLoading, isLoadingMore, hasMoreRecommendations, loadRecommendations]);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -222,24 +272,38 @@ const Recommendations: React.FC = () => {
                   <p className="text-slate-300 mb-6">Use the search bar above to find and rate movies.</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {recommendations.map((movie) => (
-                    <div key={movie.id}>
-                      <MovieCard
-                        movie={movie}
-                        onRate={handleRate}
-                        onAddToWatchlist={handleAddToWatchlist}
-                      />
-                      {movie.reasons && movie.reasons.length > 0 && (
-                        <div className="mt-2 bg-blue-900/20 border border-blue-700/30 rounded p-2">
-                          <p className="text-blue-300 text-xs">
-                            <span aria-hidden="true">&#128161; </span>{movie.reasons[0]}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    {recommendations.map((movie) => (
+                      <div key={movie.id}>
+                        <MovieCard
+                          movie={movie}
+                          onRate={handleRate}
+                          onAddToWatchlist={handleAddToWatchlist}
+                        />
+                        {movie.reasons && movie.reasons.length > 0 && (
+                          <div className="mt-2 bg-blue-900/20 border border-blue-700/30 rounded p-2">
+                            <p className="text-blue-300 text-xs">
+                              <span aria-hidden="true">&#128161; </span>{movie.reasons[0]}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  {/* Infinite scroll trigger */}
+                  <div ref={loadMoreRef} className="flex justify-center py-8">
+                    {isLoadingMore && (
+                      <div className="text-slate-400">Loading more recommendations...</div>
+                    )}
+                    {!isLoadingMore && hasMoreRecommendations && (
+                      <div className="text-slate-500 text-sm">Scroll for more</div>
+                    )}
+                    {!hasMoreRecommendations && recommendations.length > 0 && (
+                      <div className="text-slate-500 text-sm">You've seen all recommendations. Rate some movies to get more!</div>
+                    )}
+                  </div>
+                </>
               )}
             </>
           )}
@@ -273,7 +337,7 @@ const Recommendations: React.FC = () => {
       {viewMode === 'swipe' && (
         <div className="flex flex-col items-center">
           {/* Session stats */}
-          <div className="flex gap-4 mb-6 text-sm">
+          <div className="flex gap-3 mb-6 text-sm flex-wrap justify-center">
             <div className="bg-green-900/30 text-green-400 px-3 py-1 rounded-full">
               <span aria-hidden="true">&#128077; </span>{swipeDiscover.stats.liked}
             </div>
@@ -282,6 +346,9 @@ const Recommendations: React.FC = () => {
             </div>
             <div className="bg-blue-900/30 text-blue-400 px-3 py-1 rounded-full">
               <span aria-hidden="true">&#128278; </span>{swipeDiscover.stats.watchlisted}
+            </div>
+            <div className="bg-slate-700/50 text-slate-400 px-3 py-1 rounded-full">
+              <span aria-hidden="true">&#8594; </span>{swipeDiscover.stats.skipped}
             </div>
           </div>
 
@@ -314,6 +381,7 @@ const Recommendations: React.FC = () => {
                 <p>Disliked: {swipeDiscover.stats.disliked}</p>
                 <p>OK: {swipeDiscover.stats.ok}</p>
                 <p>Added to watchlist: {swipeDiscover.stats.watchlisted}</p>
+                <p>Skipped: {swipeDiscover.stats.skipped}</p>
               </div>
               <button
                 onClick={swipeDiscover.loadMore}
@@ -340,6 +408,7 @@ const Recommendations: React.FC = () => {
                 onSwipeLeft={() => triggerSwipe('left')}
                 onSwipeRight={() => triggerSwipe('right')}
                 onSwipeUp={() => triggerSwipe('up')}
+                onSkip={() => triggerSwipe('down')}
                 onRate={swipeDiscover.rateWithButton}
                 onUndo={swipeDiscover.undo}
                 canUndo={swipeDiscover.canUndo}
@@ -348,7 +417,7 @@ const Recommendations: React.FC = () => {
 
               {/* Swipe hints */}
               <div className="text-slate-500 text-xs text-center mt-2 space-y-1">
-                <p>Swipe left to dislike, right to like, up for watchlist</p>
+                <p>Swipe left to dislike, right to like, up for watchlist, down to skip</p>
                 <p>or use the buttons below</p>
               </div>
 
