@@ -3,6 +3,7 @@ import React from 'react';
 interface SwipeControlsProps {
   onUndo: () => void;
   onAlreadyWatched: () => void;
+  onSkip: () => void;
   canUndo: boolean;
   isProcessing: boolean;
 }
@@ -10,6 +11,7 @@ interface SwipeControlsProps {
 const SwipeControls: React.FC<SwipeControlsProps> = ({
   onUndo,
   onAlreadyWatched,
+  onSkip,
   canUndo,
   isProcessing,
 }) => {
@@ -70,6 +72,30 @@ const SwipeControls: React.FC<SwipeControlsProps> = ({
           />
         </svg>
         Already Watched
+      </button>
+
+      {/* Skip */}
+      <button
+        onClick={onSkip}
+        disabled={isProcessing}
+        className={`${buttonBase} w-12 h-12 bg-slate-700 hover:bg-slate-500 text-slate-400 hover:text-white border border-slate-600`}
+        aria-label="Skip movie"
+        title="Skip"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-5 w-5"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M13 5l7 7-7 7M5 5l7 7-7 7"
+          />
+        </svg>
       </button>
     </div>
   );

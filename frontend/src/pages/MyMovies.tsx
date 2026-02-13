@@ -34,7 +34,8 @@ const MyMovies: React.FC = () => {
   };
 
   const applyFiltersAndSort = () => {
-    let filtered = [...movies];
+    // Filter out NOT_INTERESTED movies (they're only used for recommendations filtering)
+    let filtered = movies.filter(m => m.rating !== 'NOT_INTERESTED');
 
     // Apply rating filter
     if (filterRating !== 'ALL') {

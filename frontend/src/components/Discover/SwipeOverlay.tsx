@@ -26,6 +26,14 @@ const SwipeOverlay: React.FC<SwipeOverlayProps> = ({ direction, progress }) => {
       textColor: 'text-blue-400',
       position: 'right-4 top-1/2 -translate-y-1/2',
     },
+    down: {
+      bg: 'bg-slate-500/30',
+      border: 'border-slate-400',
+      icon: '&#8594;', // arrow
+      text: 'SKIP',
+      textColor: 'text-slate-300',
+      position: 'bottom-4 left-1/2 -translate-x-1/2',
+    },
   };
 
   const config = overlayConfig[direction];

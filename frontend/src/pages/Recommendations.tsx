@@ -410,6 +410,9 @@ const Recommendations: React.FC = () => {
             <div className="bg-purple-900/30 text-purple-400 px-3 py-1 rounded-full">
               <span aria-hidden="true">&#127916; </span>{swipeDiscover.stats.alreadyWatched} Rated
             </div>
+            <div className="bg-slate-700/50 text-slate-400 px-3 py-1 rounded-full">
+              <span aria-hidden="true">&#8594; </span>{swipeDiscover.stats.skipped} Skipped
+            </div>
           </div>
 
           {/* Loading state */}
@@ -440,6 +443,7 @@ const Recommendations: React.FC = () => {
                 <p>Added to watchlist: {swipeDiscover.stats.wantToWatch}</p>
                 <p>Not interested: {swipeDiscover.stats.notInterested}</p>
                 <p>Already watched & rated: {swipeDiscover.stats.alreadyWatched}</p>
+                <p>Skipped: {swipeDiscover.stats.skipped}</p>
               </div>
               <button
                 onClick={swipeDiscover.loadMore}
@@ -465,6 +469,7 @@ const Recommendations: React.FC = () => {
               <SwipeControls
                 onUndo={swipeDiscover.undo}
                 onAlreadyWatched={swipeDiscover.openRatingModal}
+                onSkip={swipeDiscover.skip}
                 canUndo={swipeDiscover.canUndo}
                 isProcessing={swipeDiscover.isProcessing}
               />

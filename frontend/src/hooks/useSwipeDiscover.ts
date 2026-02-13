@@ -9,6 +9,7 @@ const initialStats: SwipeSessionStats = {
   wantToWatch: 0,
   notInterested: 0,
   alreadyWatched: 0,
+  skipped: 0,
   total: 0,
 };
 
@@ -103,7 +104,7 @@ export const useSwipeDiscover = (category: DiscoverCategory = 'for_you'): UseSwi
   }, [cardStack.length, isPrefetching, isLoading, loadMovies, currentPage]);
 
   // Update stats helper
-  const updateStats = useCallback((type: 'wantToWatch' | 'notInterested' | 'alreadyWatched', increment: number) => {
+  const updateStats = useCallback((type: 'wantToWatch' | 'notInterested' | 'alreadyWatched' | 'skipped', increment: number) => {
     setStats((prev) => ({
       ...prev,
       [type]: prev[type] + increment,
@@ -111,12 +112,28 @@ export const useSwipeDiscover = (category: DiscoverCategory = 'for_you'): UseSwi
     }));
   }, []);
 
-  // Handle swipe gesture - simplified to left/right only
+  // Handle swipe gesture
   const swipe = useCallback(
     async (direction: SwipeDirection) => {
       if (cardStack.length === 0 || isProcessing) return;
 
       const movie = cardStack[0];
+
+      // Skip is handled separately (no API call)
+      if (direction === 'down') {
+        setCardStack((prev) => prev.slice(1));
+        updateStats('skipped', 1);
+
+        // Add to undo history (skip actions can be undone locally)
+        const swipeAction: SwipeAction = {
+          movie,
+          action: 'SKIP',
+          apiRecordId: undefined,
+          timestamp: Date.now(),
+        };
+        setSwipeHistory((prev) => [swipeAction, ...prev].slice(0, MAX_UNDO_HISTORY));
+        return;
+      }
 
       setIsProcessing(true);
       // Optimistic update - remove card immediately
@@ -169,6 +186,11 @@ export const useSwipeDiscover = (category: DiscoverCategory = 'for_you'): UseSwi
     },
     [cardStack, isProcessing, updateStats]
   );
+
+  // Skip current movie (no API call, just remove from stack)
+  const skip = useCallback(() => {
+    swipe('down');
+  }, [swipe]);
 
   // Rating modal handlers
   const openRatingModal = useCallback(() => {
@@ -255,6 +277,8 @@ export const useSwipeDiscover = (category: DiscoverCategory = 'for_you'): UseSwi
         updateStats('wantToWatch', -1);
       } else if (lastAction.action === 'NOT_INTERESTED') {
         updateStats('notInterested', -1);
+      } else if (lastAction.action === 'SKIP') {
+        updateStats('skipped', -1);
       } else {
         // It was a rating from modal
         updateStats('alreadyWatched', -1);
@@ -315,6 +339,7 @@ export const useSwipeDiscover = (category: DiscoverCategory = 'for_you'): UseSwi
     canUndo: swipeHistory.length > 0,
     ratingModal,
     swipe,
+    skip,
     openRatingModal,
     closeRatingModal,
     submitRating,

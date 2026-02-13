@@ -1,9 +1,9 @@
 import { DiscoverMovie, Rating } from '../services/api';
 
-// Simplified to only horizontal swipes
-export type SwipeDirection = 'left' | 'right';
+// Horizontal swipes + down for skip
+export type SwipeDirection = 'left' | 'right' | 'down';
 
-export type SwipeActionType = Rating | 'WATCHLIST';
+export type SwipeActionType = Rating | 'WATCHLIST' | 'SKIP';
 
 export interface SwipeAction {
   movie: DiscoverMovie;
@@ -12,11 +12,12 @@ export interface SwipeAction {
   timestamp: number;
 }
 
-// Simplified stats for new interaction model
+// Stats for interaction model
 export interface SwipeSessionStats {
   wantToWatch: number;      // Swiped right -> watchlist
   notInterested: number;    // Swiped left -> NOT_INTERESTED
   alreadyWatched: number;   // Used rating modal
+  skipped: number;          // Skipped (no API call)
   total: number;
 }
 
@@ -36,6 +37,7 @@ export interface UseSwipeDiscoverReturn {
   canUndo: boolean;
   ratingModal: RatingModalState;
   swipe: (direction: SwipeDirection) => Promise<void>;
+  skip: () => void;
   openRatingModal: () => void;
   closeRatingModal: () => void;
   submitRating: (rating: Rating) => Promise<void>;
