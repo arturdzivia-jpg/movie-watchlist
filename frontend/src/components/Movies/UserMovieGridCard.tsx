@@ -6,12 +6,12 @@ interface UserMovieGridCardProps {
   onClick?: () => void;
 }
 
-const ratingConfig: Record<Rating, { emoji: string; label: string; bgColor: string }> = {
-  NOT_INTERESTED: { emoji: '', label: 'Not Interested', bgColor: 'bg-slate-600' },
-  DISLIKE: { emoji: '', label: 'Dislike', bgColor: 'bg-gray-600' },
-  OK: { emoji: '', label: 'OK', bgColor: 'bg-yellow-600' },
-  LIKE: { emoji: '', label: 'Like', bgColor: 'bg-green-600' },
-  SUPER_LIKE: { emoji: '', label: 'Love', bgColor: 'bg-red-600' }
+const ratingConfig: Record<Rating, { emoji: string; label: string }> = {
+  NOT_INTERESTED: { emoji: '🚫', label: 'Not Interested' },
+  DISLIKE: { emoji: '👎', label: 'Dislike' },
+  OK: { emoji: '😐', label: 'OK' },
+  LIKE: { emoji: '👍', label: 'Like' },
+  SUPER_LIKE: { emoji: '❤️', label: 'Love' }
 };
 
 const UserMovieGridCard: React.FC<UserMovieGridCardProps> = ({ userMovie, onClick }) => {
@@ -58,10 +58,11 @@ const UserMovieGridCard: React.FC<UserMovieGridCardProps> = ({ userMovie, onClic
           </div>
         )}
 
-        {/* Rating badge */}
+        {/* Rating emoji */}
         <div
-          className={`absolute top-2 right-2 ${config.bgColor} text-white px-2 py-1 rounded-full text-sm font-medium shadow-lg`}
+          className="absolute top-2 right-2 text-2xl drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
           title={config.label}
+          aria-label={config.label}
         >
           {config.emoji}
         </div>
