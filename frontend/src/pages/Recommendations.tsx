@@ -69,21 +69,28 @@ const Recommendations: React.FC = () => {
     style: 'all' as MovieStyle
   });
 
-  // Clear cache and reload when filters change
+  // Track filter version to force reload when filters change
+  const [filterVersion, setFilterVersion] = useState(0);
   const prevFiltersRef = useRef(filters);
-  const filtersChanged = prevFiltersRef.current.genre !== filters.genre || prevFiltersRef.current.style !== filters.style;
 
+  // Clear cache and bump version when filters change
   useEffect(() => {
+    const filtersChanged = prevFiltersRef.current.genre !== filters.genre ||
+                           prevFiltersRef.current.style !== filters.style;
+
     if (filtersChanged) {
+      prevFiltersRef.current = filters;
+      // Clear all caches when filters change
       setCategoryCache({
         for_you: createEmptyCache(),
         popular: createEmptyCache(),
         new_releases: createEmptyCache(),
         top_rated: createEmptyCache()
       });
-      prevFiltersRef.current = filters;
+      // Bump version to trigger reload in the other effect
+      setFilterVersion(v => v + 1);
     }
-  }, [filters, filtersChanged]);
+  }, [filters.genre, filters.style]);
 
   // View mode state (persisted to localStorage)
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
@@ -158,7 +165,7 @@ const Recommendations: React.FC = () => {
       loadCategoryMovies(category, true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [category, activeTab, viewMode, filters.genre, filters.style]);
+  }, [category, activeTab, viewMode, filterVersion]);
 
   const loadCategoryMovies = useCallback(async (cat: DiscoverCategory, isInitial: boolean = true) => {
     try {
