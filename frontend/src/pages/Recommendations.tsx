@@ -29,6 +29,16 @@ const createEmptyCache = (): CategoryCache => ({
 });
 
 const Recommendations: React.FC = () => {
+  // Toast notification state
+  const [toast, setToast] = useState<{ message: string; visible: boolean }>({ message: '', visible: false });
+
+  const showToast = (message: string) => {
+    setToast({ message, visible: true });
+    setTimeout(() => {
+      setToast(prev => ({ ...prev, visible: false }));
+    }, 2000);
+  };
+
   // Category state
   const [category, setCategory] = useState<DiscoverCategory>('for_you');
   const [categoryCache, setCategoryCache] = useState<Record<DiscoverCategory, CategoryCache>>({
@@ -187,6 +197,7 @@ const Recommendations: React.FC = () => {
   const handleAddToWatchlist = async (tmdbId: number) => {
     try {
       await watchlistAPI.add(tmdbId);
+      showToast('Added to watchlist');
       removeMovieFromCaches(tmdbId);
     } catch (error: any) {
       console.error('Failed to add to watchlist:', error);
@@ -215,7 +226,7 @@ const Recommendations: React.FC = () => {
   };
 
   return (
-    <div>
+    <div className="relative">
       {/* Header with view toggle */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-3xl font-bold text-white">Discover Movies</h1>
@@ -490,6 +501,17 @@ const Recommendations: React.FC = () => {
           )}
         </div>
       )}
+
+      {/* Toast notification */}
+      <div
+        className={`fixed bottom-8 left-1/2 -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg transition-all duration-300 ${
+          toast.visible
+            ? 'opacity-100 translate-y-0'
+            : 'opacity-0 translate-y-4 pointer-events-none'
+        }`}
+      >
+        {toast.message}
+      </div>
     </div>
   );
 };
