@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { DiscoverMovie, DiscoverCategory, Rating, discoverAPI, userMoviesAPI, watchlistAPI } from '../services/api';
+import { DiscoverMovie, DiscoverCategory, Rating, discoverAPI, userMoviesAPI, watchlistAPI, DiscoverFilters } from '../services/api';
 import { SwipeDirection, SwipeAction, SwipeSessionStats, RatingModalState, UseSwipeDiscoverReturn } from '../types/discover';
 
 const PREFETCH_THRESHOLD = 10;
@@ -13,7 +13,7 @@ const initialStats: SwipeSessionStats = {
   total: 0,
 };
 
-export const useSwipeDiscover = (category: DiscoverCategory = 'for_you'): UseSwipeDiscoverReturn => {
+export const useSwipeDiscover = (category: DiscoverCategory = 'for_you', filters?: DiscoverFilters): UseSwipeDiscoverReturn => {
   const [cardStack, setCardStack] = useState<DiscoverMovie[]>([]);
   const [swipeHistory, setSwipeHistory] = useState<SwipeAction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -28,11 +28,12 @@ export const useSwipeDiscover = (category: DiscoverCategory = 'for_you'): UseSwi
     movie: null,
   });
   const prevCategoryRef = useRef(category);
+  const prevFiltersRef = useRef(filters);
 
   // Load movies for the current category
   const loadMovies = useCallback(async (page: number = 1) => {
     try {
-      const response = await discoverAPI.get(category, page);
+      const response = await discoverAPI.get(category, page, filters);
       const newMovies = response.data.movies.filter(
         (movie) => !seenIds.has(movie.id)
       );
@@ -41,12 +42,17 @@ export const useSwipeDiscover = (category: DiscoverCategory = 'for_you'): UseSwi
       console.error('Failed to load movies:', err);
       throw err;
     }
-  }, [category, seenIds]);
+  }, [category, seenIds, filters]);
 
-  // Reset when category changes
+  // Reset when category or filters change
   useEffect(() => {
-    if (prevCategoryRef.current !== category) {
+    const categoryChanged = prevCategoryRef.current !== category;
+    const filtersChanged = prevFiltersRef.current?.genre !== filters?.genre ||
+                           prevFiltersRef.current?.style !== filters?.style;
+
+    if (categoryChanged || filtersChanged) {
       prevCategoryRef.current = category;
+      prevFiltersRef.current = filters;
       setCardStack([]);
       setSwipeHistory([]);
       setStats(initialStats);
@@ -55,7 +61,7 @@ export const useSwipeDiscover = (category: DiscoverCategory = 'for_you'): UseSwi
       setError(null);
       setRatingModal({ isOpen: false, movie: null });
     }
-  }, [category]);
+  }, [category, filters]);
 
   // Initial load
   useEffect(() => {
@@ -74,7 +80,8 @@ export const useSwipeDiscover = (category: DiscoverCategory = 'for_you'): UseSwi
       }
     };
     init();
-  }, [category]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [category, filters?.genre, filters?.style]);
 
   // Pre-fetch when running low on cards
   useEffect(() => {

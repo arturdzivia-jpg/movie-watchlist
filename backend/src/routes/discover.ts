@@ -7,10 +7,12 @@ import prisma from '../config/database';
 const router = express.Router();
 
 type DiscoverCategory = 'for_you' | 'popular' | 'new_releases' | 'top_rated';
+type MovieStyle = 'all' | 'movies' | 'anime' | 'cartoons';
 
 const MIN_VOTE_COUNT = 100;
 const MIN_VOTE_COUNT_TOP_RATED = 500;
 const MIN_VOTE_COUNT_NEW = 50;
+const ANIMATION_GENRE_ID = 16;
 
 // Get movies by category
 router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
@@ -18,11 +20,19 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
     const userId = req.user!.userId;
     const category = (req.query.category as DiscoverCategory) || 'for_you';
     const page = parseInt(req.query.page as string) || 1;
+    const genre = req.query.genre ? parseInt(req.query.genre as string) : null;
+    const style = (req.query.style as MovieStyle) || 'all';
 
     // Validate category
     const validCategories: DiscoverCategory[] = ['for_you', 'popular', 'new_releases', 'top_rated'];
     if (!validCategories.includes(category)) {
       return res.status(400).json({ error: 'Invalid category' });
+    }
+
+    // Validate style
+    const validStyles: MovieStyle[] = ['all', 'movies', 'anime', 'cartoons'];
+    if (!validStyles.includes(style)) {
+      return res.status(400).json({ error: 'Invalid style' });
     }
 
     // Get user's rated and watchlisted movies to filter them out
@@ -45,8 +55,45 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
     let movies: TMDBMovie[] = [];
     let totalPages = 1;
 
+    // Build genre filter based on genre and style
+    const buildGenreFilter = (): string | undefined => {
+      const genres: number[] = [];
+
+      // Add user-selected genre
+      if (genre) {
+        genres.push(genre);
+      }
+
+      // Add animation genre for anime/cartoons
+      if (style === 'anime' || style === 'cartoons') {
+        if (!genres.includes(ANIMATION_GENRE_ID)) {
+          genres.push(ANIMATION_GENRE_ID);
+        }
+      }
+
+      return genres.length > 0 ? genres.join(',') : undefined;
+    };
+
+    // Build language filter based on style
+    const buildLanguageFilters = (): { with_original_language?: string; without_original_language?: string; without_genres?: string } => {
+      switch (style) {
+        case 'anime':
+          // Animation + Japanese language
+          return { with_original_language: 'ja' };
+        case 'cartoons':
+          // Animation + NOT Japanese language
+          return { without_original_language: 'ja' };
+        case 'movies':
+          // Exclude animation genre
+          return { without_genres: String(ANIMATION_GENRE_ID) };
+        default:
+          return {};
+      }
+    };
+
     if (category === 'for_you') {
       // Use existing recommendation service
+      // Note: For 'for_you', filters are not applied as recommendations are personalized
       const recommendations = await recommendationService.generateRecommendations(userId, 20);
       movies = recommendations;
       totalPages = 10; // Approximate - recommendations are generated dynamically
@@ -59,7 +106,14 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
       const todayStr = today.toISOString().split('T')[0];
       const sixMonthsAgoStr = sixMonthsAgo.toISOString().split('T')[0];
 
-      let discoverParams: Parameters<typeof tmdbService.discoverMovies>[0] = { page };
+      const genreFilter = buildGenreFilter();
+      const languageFilters = buildLanguageFilters();
+
+      let discoverParams: Parameters<typeof tmdbService.discoverMovies>[0] = {
+        page,
+        with_genres: genreFilter,
+        ...languageFilters
+      };
 
       switch (category) {
         case 'popular':

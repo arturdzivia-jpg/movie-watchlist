@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { watchlistAPI, WatchlistItem, Rating } from '../services/api';
+import MovieDetailModal from '../components/Movies/MovieDetailModal';
 
 interface Genre {
   id: number;
@@ -12,6 +13,7 @@ const Watchlist: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [markingWatched, setMarkingWatched] = useState<string | null>(null);
+  const [selectedItem, setSelectedItem] = useState<WatchlistItem | null>(null);
 
   useEffect(() => {
     loadWatchlist();
@@ -66,6 +68,19 @@ const Watchlist: React.FC = () => {
     } finally {
       setMarkingWatched(null);
     }
+  };
+
+  // Modal handlers
+  const handleModalRate = async (rating: Rating) => {
+    if (!selectedItem) return;
+    await handleMarkWatched(selectedItem.id, rating);
+    setSelectedItem(null);
+  };
+
+  const handleModalRemove = async () => {
+    if (!selectedItem) return;
+    await handleRemove(selectedItem.id);
+    setSelectedItem(null);
   };
 
   if (isLoading) {
@@ -126,9 +141,12 @@ const Watchlist: React.FC = () => {
             const year = movie.releaseDate ? new Date(movie.releaseDate).getFullYear() : 'N/A';
 
             return (
-              <div key={item.id} className="bg-slate-800 rounded-lg overflow-hidden shadow-lg border border-slate-700">
+              <div key={item.id} className="bg-slate-800 rounded-lg overflow-hidden shadow-lg border border-slate-700 hover:border-slate-600 transition-colors">
                 <div className="flex">
-                  <div className="w-32 flex-shrink-0 bg-slate-700">
+                  <div
+                    className="w-32 flex-shrink-0 bg-slate-700 cursor-pointer"
+                    onClick={() => setSelectedItem(item)}
+                  >
                     <img
                       src={posterUrl}
                       alt={`Movie poster for ${movie.title}`}
@@ -220,6 +238,19 @@ const Watchlist: React.FC = () => {
             );
           })}
         </div>
+      )}
+
+      {/* Movie Detail Modal */}
+      {selectedItem && (
+        <MovieDetailModal
+          movie={selectedItem.movie}
+          tmdbId={selectedItem.movie.tmdbId}
+          isInWatchlist={true}
+          onClose={() => setSelectedItem(null)}
+          onRate={handleModalRate}
+          onRemoveFromWatchlist={handleModalRemove}
+          isProcessing={markingWatched === selectedItem.id}
+        />
       )}
     </div>
   );

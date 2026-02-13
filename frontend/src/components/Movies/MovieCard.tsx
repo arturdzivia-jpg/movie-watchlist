@@ -6,10 +6,11 @@ interface MovieCardProps {
   onRate?: (tmdbId: number, rating: Rating) => void;
   onAddToWatchlist?: (tmdbId: number) => void;
   onNotInterested?: (tmdbId: number) => void;
+  onClick?: (movie: TMDBMovie) => void;
   showActions?: boolean;
 }
 
-const MovieCard: React.FC<MovieCardProps> = ({ movie, onRate, onAddToWatchlist, onNotInterested, showActions = true }) => {
+const MovieCard: React.FC<MovieCardProps> = ({ movie, onRate, onAddToWatchlist, onNotInterested, onClick, showActions = true }) => {
   const posterUrl = movie.poster_path
     ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
     : '/placeholder-movie.png';
@@ -25,7 +26,10 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onRate, onAddToWatchlist, 
 
   return (
     <div className="bg-slate-800 rounded-lg overflow-hidden shadow-lg border border-slate-700 hover:border-slate-600 transition-all">
-      <div className="relative aspect-[2/3] bg-slate-700">
+      <div
+        className={`relative aspect-[2/3] bg-slate-700 ${onClick ? 'cursor-pointer' : ''}`}
+        onClick={() => onClick?.(movie)}
+      >
         <img
           src={posterUrl}
           alt={`Movie poster for ${movie.title}`}

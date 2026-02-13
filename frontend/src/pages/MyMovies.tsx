@@ -2,6 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { userMoviesAPI, UserMovie, Rating } from '../services/api';
 import UserMovieCard from '../components/Movies/UserMovieCard';
+import UserMovieGridCard from '../components/Movies/UserMovieGridCard';
+import MovieDetailModal from '../components/Movies/MovieDetailModal';
+
+type ViewMode = 'list' | 'grid';
 
 const MyMovies: React.FC = () => {
   const [movies, setMovies] = useState<UserMovie[]>([]);
@@ -10,6 +14,20 @@ const MyMovies: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [filterRating, setFilterRating] = useState<Rating | 'ALL'>('ALL');
   const [sortBy, setSortBy] = useState<'date' | 'title' | 'rating'>('date');
+
+  // View mode state (persisted to localStorage)
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    const saved = localStorage.getItem('myMoviesViewMode');
+    return (saved as ViewMode) || 'list';
+  });
+
+  // Modal state
+  const [selectedMovie, setSelectedMovie] = useState<UserMovie | null>(null);
+
+  // Persist view mode
+  useEffect(() => {
+    localStorage.setItem('myMoviesViewMode', viewMode);
+  }, [viewMode]);
 
   useEffect(() => {
     loadMovies();
@@ -98,6 +116,19 @@ const MyMovies: React.FC = () => {
     }
   };
 
+  // Modal handlers
+  const handleModalUpdateRating = async (rating: Rating) => {
+    if (!selectedMovie) return;
+    await handleUpdateRating(selectedMovie.id, rating);
+    setSelectedMovie(prev => prev ? { ...prev, rating } : null);
+  };
+
+  const handleModalDelete = async () => {
+    if (!selectedMovie) return;
+    await handleDelete(selectedMovie.id);
+    setSelectedMovie(null);
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -129,8 +160,39 @@ const MyMovies: React.FC = () => {
       )}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-white">My Movies</h1>
-        <div className="text-slate-400">
-          {filteredMovies.length} {filteredMovies.length === 1 ? 'movie' : 'movies'}
+        <div className="flex items-center gap-4">
+          <div className="text-slate-400">
+            {filteredMovies.length} {filteredMovies.length === 1 ? 'movie' : 'movies'}
+          </div>
+          {/* View mode toggle */}
+          <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
+            <button
+              onClick={() => setViewMode('list')}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                viewMode === 'list'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+              aria-label="List view"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                viewMode === 'grid'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+              aria-label="Grid view"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -178,16 +240,28 @@ const MyMovies: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid gap-4">
-            {filteredMovies.map((userMovie) => (
-              <UserMovieCard
-                key={userMovie.id}
-                userMovie={userMovie}
-                onUpdateRating={handleUpdateRating}
-                onDelete={handleDelete}
-              />
-            ))}
-          </div>
+          {viewMode === 'list' ? (
+            <div className="grid gap-4">
+              {filteredMovies.map((userMovie) => (
+                <UserMovieCard
+                  key={userMovie.id}
+                  userMovie={userMovie}
+                  onUpdateRating={handleUpdateRating}
+                  onDelete={handleDelete}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              {filteredMovies.map((userMovie) => (
+                <UserMovieGridCard
+                  key={userMovie.id}
+                  userMovie={userMovie}
+                  onClick={() => setSelectedMovie(userMovie)}
+                />
+              ))}
+            </div>
+          )}
 
           {filteredMovies.length === 0 && movies.length > 0 && (
             <div className="bg-slate-800 rounded-lg p-8 text-center border border-slate-700">
@@ -195,6 +269,18 @@ const MyMovies: React.FC = () => {
             </div>
           )}
         </>
+      )}
+
+      {/* Movie Detail Modal */}
+      {selectedMovie && (
+        <MovieDetailModal
+          movie={selectedMovie.movie}
+          tmdbId={selectedMovie.movie.tmdbId}
+          userRating={selectedMovie.rating}
+          onClose={() => setSelectedMovie(null)}
+          onUpdateRating={handleModalUpdateRating}
+          onDelete={handleModalDelete}
+        />
       )}
     </div>
   );

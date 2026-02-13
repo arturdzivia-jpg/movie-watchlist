@@ -128,6 +128,9 @@ class TMDBService {
 
   async discoverMovies(params: {
     with_genres?: string;
+    without_genres?: string;
+    with_original_language?: string;
+    without_original_language?: string;
     sort_by?: string;
     page?: number;
     'vote_count.gte'?: number;

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { discoverAPI, userMoviesAPI, watchlistAPI, DiscoverMovie, DiscoverCategory, Rating, moviesAPI, TMDBMovie } from '../services/api';
+import { discoverAPI, userMoviesAPI, watchlistAPI, DiscoverMovie, DiscoverCategory, Rating, moviesAPI, TMDBMovie, DiscoverFilters, MovieStyle } from '../services/api';
 import MovieCard from '../components/Movies/MovieCard';
-import { SwipeCardStack, SwipeControls, RatingModal } from '../components/Discover';
+import MovieDetailModal from '../components/Movies/MovieDetailModal';
+import { SwipeCardStack, SwipeControls, RatingModal, FilterBar } from '../components/Discover';
 import { useSwipeDiscover } from '../hooks/useSwipeDiscover';
 import type { SwipeDirection } from '../types/discover';
 
@@ -59,14 +60,39 @@ const Recommendations: React.FC = () => {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
+  // Movie detail modal state
+  const [detailModal, setDetailModal] = useState<{ movie: DiscoverMovie | TMDBMovie; isOpen: boolean } | null>(null);
+
+  // Filter state
+  const [filters, setFilters] = useState<DiscoverFilters>({
+    genre: null,
+    style: 'all' as MovieStyle
+  });
+
+  // Clear cache and reload when filters change
+  const prevFiltersRef = useRef(filters);
+  const filtersChanged = prevFiltersRef.current.genre !== filters.genre || prevFiltersRef.current.style !== filters.style;
+
+  useEffect(() => {
+    if (filtersChanged) {
+      setCategoryCache({
+        for_you: createEmptyCache(),
+        popular: createEmptyCache(),
+        new_releases: createEmptyCache(),
+        top_rated: createEmptyCache()
+      });
+      prevFiltersRef.current = filters;
+    }
+  }, [filters, filtersChanged]);
+
   // View mode state (persisted to localStorage)
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     const saved = localStorage.getItem('recommendationsViewMode');
     return (saved as ViewMode) || 'grid';
   });
 
-  // Swipe view hook - pass current category
-  const swipeDiscover = useSwipeDiscover(category);
+  // Swipe view hook - pass current category and filters
+  const swipeDiscover = useSwipeDiscover(category, filters);
 
   // Persist view mode preference and clear grid cache when switching from swipe to grid
   // (to ensure movies added to watchlist/rated in swipe mode are filtered out)
@@ -131,6 +157,7 @@ const Recommendations: React.FC = () => {
     if (viewMode === 'grid' && activeTab === 'category' && categoryCache[category].movies.length === 0) {
       loadCategoryMovies(category, true);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [category, activeTab, viewMode]);
 
   const loadCategoryMovies = useCallback(async (cat: DiscoverCategory, isInitial: boolean = true) => {
@@ -142,7 +169,7 @@ const Recommendations: React.FC = () => {
       }
 
       const page = isInitial ? 1 : categoryCache[cat].page + 1;
-      const response = await discoverAPI.get(cat, page);
+      const response = await discoverAPI.get(cat, page, filters);
       const newMovies = response.data.movies;
 
       setCategoryCache(prev => {
@@ -169,7 +196,7 @@ const Recommendations: React.FC = () => {
       setIsLoading(false);
       setIsLoadingMore(false);
     }
-  }, [categoryCache]);
+  }, [categoryCache, filters]);
 
   // Infinite scroll observer for grid view
   useEffect(() => {
@@ -276,6 +303,27 @@ const Recommendations: React.FC = () => {
     }
   };
 
+  // Modal handlers
+  const handleOpenModal = (movie: DiscoverMovie | TMDBMovie) => {
+    setDetailModal({ movie, isOpen: true });
+  };
+
+  const handleCloseModal = () => {
+    setDetailModal(null);
+  };
+
+  const handleModalRate = async (rating: Rating) => {
+    if (!detailModal) return;
+    await handleRate(detailModal.movie.id, rating);
+    setDetailModal(null);
+  };
+
+  const handleModalAddToWatchlist = async () => {
+    if (!detailModal) return;
+    await handleAddToWatchlist(detailModal.movie.id);
+    setDetailModal(null);
+  };
+
   // Swipe handlers
   const handleSwipe = (direction: SwipeDirection, _movie: DiscoverMovie) => {
     swipeDiscover.swipe(direction);
@@ -329,6 +377,14 @@ const Recommendations: React.FC = () => {
       {/* Grid View */}
       {viewMode === 'grid' && (
         <>
+          {/* Filter Bar */}
+          <FilterBar
+            selectedGenre={filters.genre ?? null}
+            selectedStyle={filters.style ?? 'all'}
+            onGenreChange={(genre) => setFilters(f => ({ ...f, genre }))}
+            onStyleChange={(style) => setFilters(f => ({ ...f, style }))}
+          />
+
           <div className="bg-slate-800 rounded-lg p-6 mb-6 border border-slate-700">
             <form onSubmit={handleSearch} className="flex gap-4">
               <input
@@ -407,6 +463,7 @@ const Recommendations: React.FC = () => {
                           onRate={handleRate}
                           onAddToWatchlist={handleAddToWatchlist}
                           onNotInterested={handleNotInterested}
+                          onClick={handleOpenModal}
                         />
                         {movie.reasons && movie.reasons.length > 0 && (
                           <div className="mt-2 bg-blue-900/20 border border-blue-700/30 rounded p-2">
@@ -456,6 +513,7 @@ const Recommendations: React.FC = () => {
                       onRate={handleRate}
                       onAddToWatchlist={handleAddToWatchlist}
                       onNotInterested={handleNotInterested}
+                      onClick={handleOpenModal}
                     />
                   ))}
                 </div>
@@ -468,6 +526,16 @@ const Recommendations: React.FC = () => {
       {/* Swipe View */}
       {viewMode === 'swipe' && (
         <div className="flex flex-col items-center">
+          {/* Filter Bar for swipe view */}
+          <div className="w-full max-w-md mb-4">
+            <FilterBar
+              selectedGenre={filters.genre ?? null}
+              selectedStyle={filters.style ?? 'all'}
+              onGenreChange={(genre) => setFilters(f => ({ ...f, genre }))}
+              onStyleChange={(style) => setFilters(f => ({ ...f, style }))}
+            />
+          </div>
+
           {/* Session stats */}
           <div className="flex gap-3 mb-6 text-sm flex-wrap justify-center">
             <div className="bg-blue-900/30 text-blue-400 px-3 py-1 rounded-full">
@@ -579,6 +647,17 @@ const Recommendations: React.FC = () => {
       >
         {toast.message}
       </div>
+
+      {/* Movie Detail Modal */}
+      {detailModal?.isOpen && (
+        <MovieDetailModal
+          movie={detailModal.movie}
+          tmdbId={detailModal.movie.id}
+          onClose={handleCloseModal}
+          onRate={handleModalRate}
+          onAddToWatchlist={handleModalAddToWatchlist}
+        />
+      )}
     </div>
   );
 };
