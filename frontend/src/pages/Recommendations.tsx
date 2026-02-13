@@ -58,6 +58,7 @@ const Recommendations: React.FC = () => {
   // Loading state
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false); // Prevent infinite retry on error
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   // Movie detail modal state
@@ -87,6 +88,8 @@ const Recommendations: React.FC = () => {
         new_releases: createEmptyCache(),
         top_rated: createEmptyCache()
       });
+      // Reset load failed state
+      setLoadFailed(false);
       // Bump version to trigger reload in the other effect
       setFilterVersion(v => v + 1);
     }
@@ -199,6 +202,8 @@ const Recommendations: React.FC = () => {
       });
     } catch (error) {
       console.error(`Failed to load ${cat} movies:`, error);
+      // Set loadFailed to prevent infinite retry from IntersectionObserver
+      setLoadFailed(true);
     } finally {
       setIsLoading(false);
       setIsLoadingMore(false);
@@ -211,7 +216,8 @@ const Recommendations: React.FC = () => {
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && !isLoading && !isLoadingMore && categoryCache[category].hasMore) {
+        // Don't retry if previous load failed (prevents infinite loop on 429 errors)
+        if (entries[0].isIntersecting && !isLoading && !isLoadingMore && !loadFailed && categoryCache[category].hasMore) {
           loadCategoryMovies(category, false);
         }
       },
@@ -223,12 +229,13 @@ const Recommendations: React.FC = () => {
     }
 
     return () => observer.disconnect();
-  }, [viewMode, activeTab, category, isLoading, isLoadingMore, categoryCache, loadCategoryMovies]);
+  }, [viewMode, activeTab, category, isLoading, isLoadingMore, loadFailed, categoryCache, loadCategoryMovies]);
 
   // Handle category change
   const handleCategoryChange = (newCategory: DiscoverCategory) => {
     setCategory(newCategory);
     setActiveTab('category');
+    setLoadFailed(false); // Reset error state on category change
     // Load if not already cached
     if (categoryCache[newCategory].movies.length === 0) {
       loadCategoryMovies(newCategory, true);

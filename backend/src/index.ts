@@ -54,10 +54,10 @@ app.use(cors({
 // Security middleware (after CORS)
 app.use(helmet());
 
-// Rate limiting - general
+// Rate limiting - general (increased for better UX)
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // 100 requests per window
+  max: 500, // 500 requests per window (increased from 100)
   message: { error: 'Too many requests, please try again later.' }
 });
 
