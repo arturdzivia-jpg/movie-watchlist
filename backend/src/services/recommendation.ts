@@ -7,6 +7,9 @@ interface ScoredMovie extends TMDBMovie {
   reasons: string[];
 }
 
+// Minimum vote count threshold to filter out obscure movies with unreliable ratings
+const MIN_VOTE_COUNT = 100;
+
 class RecommendationService {
   async generateRecommendations(userId: string, limit: number = 20): Promise<ScoredMovie[]> {
     // Get user preferences
@@ -50,7 +53,7 @@ class RecommendationService {
 
     for (const similar of similarMoviesResults) {
       similar.results.forEach(movie => {
-        if (!seenIds.has(movie.id) && !ratedTmdbIds.has(movie.id) && !watchlistTmdbIds.has(movie.id)) {
+        if (!seenIds.has(movie.id) && !ratedTmdbIds.has(movie.id) && !watchlistTmdbIds.has(movie.id) && movie.vote_count >= MIN_VOTE_COUNT) {
           candidateMovies.push(movie);
           seenIds.add(movie.id);
         }
@@ -63,12 +66,13 @@ class RecommendationService {
       try {
         const discovered = await tmdbService.discoverMovies({
           with_genres: topGenres,
-          sort_by: 'vote_average.desc',
+          sort_by: 'popularity.desc',
+          'vote_count.gte': MIN_VOTE_COUNT,
           page: 1
         });
 
         discovered.results.forEach(movie => {
-          if (!seenIds.has(movie.id) && !ratedTmdbIds.has(movie.id) && !watchlistTmdbIds.has(movie.id)) {
+          if (!seenIds.has(movie.id) && !ratedTmdbIds.has(movie.id) && !watchlistTmdbIds.has(movie.id) && movie.vote_count >= MIN_VOTE_COUNT) {
             candidateMovies.push(movie);
             seenIds.add(movie.id);
           }
@@ -83,7 +87,7 @@ class RecommendationService {
       try {
         const popular = await tmdbService.getPopularMovies(1);
         popular.results.forEach(movie => {
-          if (!seenIds.has(movie.id) && !ratedTmdbIds.has(movie.id) && !watchlistTmdbIds.has(movie.id)) {
+          if (!seenIds.has(movie.id) && !ratedTmdbIds.has(movie.id) && !watchlistTmdbIds.has(movie.id) && movie.vote_count >= MIN_VOTE_COUNT) {
             candidateMovies.push(movie);
             seenIds.add(movie.id);
           }
@@ -140,8 +144,8 @@ class RecommendationService {
       reasons.push(`Highly rated (${movie.vote_average.toFixed(1)}/10)`);
     }
 
-    // Vote count consideration (20% weight)
-    const voteCountScore = Math.min(movie.vote_count / 1000, 1) * 20;
+    // Vote count consideration (20% weight) - higher cap for better differentiation
+    const voteCountScore = Math.min(movie.vote_count / 5000, 1) * 20;
     score += voteCountScore;
 
     // Recency bonus (10% weight)
