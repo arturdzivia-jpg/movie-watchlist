@@ -37,19 +37,31 @@ const authLimiter = rateLimit({
 app.use(generalLimiter);
 
 // CORS middleware - supports multiple origins via comma-separated FRONTEND_URL
+// Supports wildcards like https://movie-watchlist-git-*.vercel.app
 const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:5173')
   .split(',')
   .map(origin => origin.trim());
+
+const isOriginAllowed = (origin: string): boolean => {
+  return allowedOrigins.some(allowed => {
+    if (allowed.includes('*')) {
+      // Convert wildcard pattern to regex
+      const pattern = allowed.replace(/\./g, '\\.').replace(/\*/g, '.*');
+      return new RegExp(`^${pattern}$`).test(origin);
+    }
+    return allowed === origin;
+  });
+};
 
 app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (mobile apps, curl, etc.)
     if (!origin) return callback(null, true);
 
-    if (allowedOrigins.includes(origin)) {
+    if (isOriginAllowed(origin)) {
       callback(null, true);
     } else {
-      console.warn(`CORS blocked origin: ${origin}`);
+      console.warn(`CORS blocked origin: ${origin}. Allowed: ${allowedOrigins.join(', ')}`);
       callback(new Error('Not allowed by CORS'));
     }
   },
