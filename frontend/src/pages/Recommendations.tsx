@@ -73,6 +73,43 @@ const Recommendations: React.FC = () => {
     localStorage.setItem('recommendationsViewMode', viewMode);
   }, [viewMode]);
 
+  // Keyboard shortcuts for swipe view
+  useEffect(() => {
+    if (viewMode !== 'swipe' || swipeDiscover.isLoading || swipeDiscover.cards.length === 0) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger if user is typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      // Don't trigger if modal is open
+      if (swipeDiscover.ratingModal.isOpen) return;
+
+      switch (e.key) {
+        case 'ArrowLeft':
+          e.preventDefault();
+          swipeDiscover.swipe('left');
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          swipeDiscover.swipe('right');
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          swipeDiscover.skip();
+          break;
+        case 'z':
+        case 'Z':
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            swipeDiscover.undo();
+          }
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [viewMode, swipeDiscover]);
+
   // Load category movies on mount or category change
   useEffect(() => {
     if (viewMode === 'grid' && activeTab === 'category' && categoryCache[category].movies.length === 0) {
@@ -476,8 +513,8 @@ const Recommendations: React.FC = () => {
 
               {/* Swipe hints */}
               <div className="text-slate-500 text-xs text-center mt-2 space-y-1">
-                <p>Swipe right to add to watchlist, left if not interested</p>
-                <p>Tap "Already Watched" to rate a movie you've seen</p>
+                <p>Swipe right to add to watchlist, left if not interested, down to skip</p>
+                <p>Keyboard: Arrow keys (Left/Right/Down), Ctrl+Z to undo</p>
               </div>
 
               {/* Rating Modal */}
