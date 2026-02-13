@@ -1,0 +1,87 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String       @id @default(uuid())
+  email        String       @unique
+  username     String       @unique
+  passwordHash String       @map("password_hash")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  userMovies   UserMovie[]
+  watchlist    Watchlist[]
+
+  @@map("users")
+}
+
+model Movie {
+  id          String   @id @default(uuid())
+  tmdbId      Int      @unique @map("tmdb_id")
+  title       String
+  overview    String?
+  posterPath  String?  @map("poster_path")
+  releaseDate String?  @map("release_date")
+  genres      Json?
+  director    String?
+  cast        Json?
+  runtime     Int?
+  lastUpdated DateTime @default(now()) @map("last_updated")
+
+  userMovies  UserMovie[]
+  watchlist   Watchlist[]
+
+  @@map("movies")
+}
+
+enum Rating {
+  DISLIKE
+  OK
+  LIKE
+  SUPER_LIKE
+}
+
+model UserMovie {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  movieId   String   @map("movie_id")
+  rating    Rating
+  watched   Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  movie     Movie    @relation(fields: [movieId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, movieId])
+  @@map("user_movies")
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model Watchlist {
+  id       String    @id @default(uuid())
+  userId   String    @map("user_id")
+  movieId  String    @map("movie_id")
+  addedAt  DateTime  @default(now()) @map("added_at")
+  priority Priority? @default(MEDIUM)
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  movie    Movie     @relation(fields: [movieId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, movieId])
+  @@map("watchlist")
+}
