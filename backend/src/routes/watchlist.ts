@@ -93,14 +93,14 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
     }
 
     // Validate priority if provided
-    let validatedPriority = Priority.MEDIUM;
+    let validatedPriority: Priority = 'MEDIUM';
     if (priority) {
       if (typeof priority !== 'string') {
         return res.status(400).json({ error: 'Priority must be a string' });
       }
       const normalizedPriority = priority.toUpperCase();
-      const validPriorities = ['LOW', 'MEDIUM', 'HIGH'];
-      if (!validPriorities.includes(normalizedPriority)) {
+      const validPriorities: Priority[] = ['LOW', 'MEDIUM', 'HIGH'];
+      if (!validPriorities.includes(normalizedPriority as Priority)) {
         return res.status(400).json({ error: 'Invalid priority value. Must be one of: LOW, MEDIUM, HIGH' });
       }
       validatedPriority = normalizedPriority as Priority;
