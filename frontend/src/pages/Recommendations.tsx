@@ -152,13 +152,13 @@ const Recommendations: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [viewMode, swipeDiscover]);
 
-  // Load category movies on mount or category change
+  // Load category movies on mount, category change, or filter change
   useEffect(() => {
     if (viewMode === 'grid' && activeTab === 'category' && categoryCache[category].movies.length === 0) {
       loadCategoryMovies(category, true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [category, activeTab, viewMode]);
+  }, [category, activeTab, viewMode, filters.genre, filters.style]);
 
   const loadCategoryMovies = useCallback(async (cat: DiscoverCategory, isInitial: boolean = true) => {
     try {
