@@ -212,8 +212,9 @@ const SwipeCardStack: React.FC<SwipeCardStackProps> = ({
             transform = `translate(${dragState.currentX}px, ${dragState.currentY}px) rotate(${rotation}deg)`;
             transition = 'none';
           } else {
-            // Default position for top card
+            // Default position for top card - use same duration for smooth animation start
             transform = 'translate(0, 0) rotate(0deg)';
+            transition = `transform ${SWIPE_OUT_DURATION}ms ease-out`;
           }
         }
 

@@ -339,12 +339,20 @@ const Recommendations: React.FC = () => {
   };
 
   // Swipe handlers
+  // Store the pending swipe direction to process after animation
+  const pendingSwipeRef = React.useRef<SwipeDirection | null>(null);
+
   const handleSwipe = (direction: SwipeDirection, _movie: DiscoverMovie) => {
-    swipeDiscover.swipe(direction);
+    // Don't process immediately - wait for animation to complete
+    pendingSwipeRef.current = direction;
   };
 
   const handleCardLeftScreen = (_movie: DiscoverMovie) => {
-    // Card animation completed
+    // Animation completed - now process the swipe
+    if (pendingSwipeRef.current) {
+      swipeDiscover.swipe(pendingSwipeRef.current);
+      pendingSwipeRef.current = null;
+    }
   };
 
   return (
