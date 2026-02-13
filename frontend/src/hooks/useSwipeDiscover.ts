@@ -181,14 +181,17 @@ export const useSwipeDiscover = (): UseSwipeDiscoverReturn => {
       } catch (err: any) {
         console.error('Failed to process swipe:', err);
 
-        // Rollback - restore card
-        setCardStack((prev) => [movie, ...prev]);
-
         if (err.response?.status === 400) {
-          // Movie already rated or in watchlist, just remove from stack
-          setCardStack((prev) => prev.filter((m) => m.id !== movie.id));
+          // Movie already rated or in watchlist - card already removed, that's fine
+          // Just don't add to undo history since there's nothing to undo
+        } else if (err.response?.status === 500) {
+          // Server error - rollback and restore card
+          setCardStack((prev) => [movie, ...prev]);
+          setError('Server error. Please try again later.');
         } else {
-          setError('Failed to save. Please try again.');
+          // Network or other error - rollback and restore card
+          setCardStack((prev) => [movie, ...prev]);
+          setError('Connection error. Please check your internet.');
         }
       } finally {
         setIsProcessing(false);
