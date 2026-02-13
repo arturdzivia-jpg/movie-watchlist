@@ -103,9 +103,36 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
 
     if (category === 'for_you') {
       // Use existing recommendation service
-      // Note: For 'for_you', filters are not applied as recommendations are personalized
-      const recommendations = await recommendationService.generateRecommendations(userId, 20);
-      movies = recommendations;
+      // Request more recommendations to allow for filtering
+      const requestLimit = (genre || style !== 'all') ? 100 : 20;
+      let recommendations = await recommendationService.generateRecommendations(userId, requestLimit);
+
+      // Apply genre filter if specified
+      if (genre) {
+        recommendations = recommendations.filter(movie =>
+          movie.genre_ids?.includes(genre)
+        );
+      }
+
+      // Apply style filter if specified
+      if (style === 'anime') {
+        // Animation genre + Japanese language
+        recommendations = recommendations.filter(movie =>
+          movie.genre_ids?.includes(ANIMATION_GENRE_ID) && movie.original_language === 'ja'
+        );
+      } else if (style === 'cartoons') {
+        // Animation genre but NOT Japanese
+        recommendations = recommendations.filter(movie =>
+          movie.genre_ids?.includes(ANIMATION_GENRE_ID) && movie.original_language !== 'ja'
+        );
+      } else if (style === 'movies') {
+        // Exclude animation
+        recommendations = recommendations.filter(movie =>
+          !movie.genre_ids?.includes(ANIMATION_GENRE_ID)
+        );
+      }
+
+      movies = recommendations.slice(0, 20);
       totalPages = 10; // Approximate - recommendations are generated dynamically
     } else {
       // Get date range for new releases (last 6 months)
