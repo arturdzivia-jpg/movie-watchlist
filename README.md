@@ -2,14 +2,16 @@
 
 A full-stack web application for managing your movie watchlist with personalized recommendations based on your preferences.
 
+**Live Demo:** [movie-watchlist-production.up.railway.app](https://movie-watchlist-production.up.railway.app)
+
 ## Features
 
 - **User Authentication**: Secure registration and login with JWT
 - **Movie Search**: Search movies using TMDB API
 - **Personal Movie List**: Rate movies with 4-tier system (Dislike, OK, Like, Super Like)
-- **Watchlist**: Add movies to watch later
-- **Personalized Recommendations**: AI-powered movie suggestions based on your ratings
-- **Statistics Dashboard**: View your movie watching statistics
+- **Watchlist**: Add movies to watch later with priority levels
+- **Personalized Recommendations**: Content-based movie suggestions based on your ratings
+- **Statistics Dashboard**: View your movie watching statistics and rating distribution
 
 ## Tech Stack
 
@@ -19,122 +21,88 @@ A full-stack web application for managing your movie watchlist with personalized
 - PostgreSQL with Prisma ORM
 - JWT Authentication
 - TMDB API Integration
+- Security: Helmet, Rate Limiting
 
 ### Frontend
-- React with TypeScript
-- React Router for navigation
+- React 18 with TypeScript
+- React Router v6 for navigation
 - Tailwind CSS for styling
 - Axios for API calls
 - Vite for build tooling
 
-## Prerequisites
+## Security Features
+
+- **JWT Authentication** with secure secret (no fallback keys)
+- **Rate Limiting**: 10 requests/15min for auth, 100 requests/15min for general API
+- **Security Headers**: Helmet middleware for XSS, clickjacking protection
+- **Input Validation**: Email format, rating values, pagination limits
+- **Database Transactions**: Atomic operations for data integrity
+- **Optimized Indexes**: Fast queries on userId, movieId, rating
+
+## Live Deployment
+
+The application is deployed on:
+- **Backend**: Railway (Node.js + PostgreSQL)
+- **Frontend**: Railway (static site)
+
+Visit: [movie-watchlist-production.up.railway.app](https://movie-watchlist-production.up.railway.app)
+
+## Local Development (Optional)
+
+### Prerequisites
 
 - Node.js (v18 or higher)
-- PostgreSQL (v14 or higher)
-- npm or yarn
-- TMDB API key (free account at [themoviedb.org](https://www.themoviedb.org/))
+- PostgreSQL (v14 or higher) or use Railway's database
+- TMDB API key (free at [themoviedb.org](https://www.themoviedb.org/))
 
-## Getting Started
-
-### 1. Clone the Repository
-
-```bash
-cd /Users/arturdzivia/Projects/Watchlist
-```
-
-### 2. Get TMDB API Key
-
-1. Go to [https://www.themoviedb.org/](https://www.themoviedb.org/)
-2. Create a free account
-3. Go to Settings > API
-4. Request an API key (choose "Developer" option)
-5. Copy your API key
-
-### 3. Set Up PostgreSQL Database
-
-Create a new PostgreSQL database:
-
-```bash
-# Using psql
-psql -U postgres
-CREATE DATABASE movie_watchlist;
-\q
-```
-
-Or use a GUI tool like pgAdmin, Postico, or TablePlus.
-
-### 4. Backend Setup
+### Backend Setup
 
 ```bash
 cd backend
-
-# Install dependencies
 npm install
-
-# Create .env file
 cp .env.example .env
 ```
 
-Edit `backend/.env` with your configuration:
+Edit `backend/.env`:
 
 ```env
-PORT=5000
+PORT=5001
 NODE_ENV=development
-
-# Update with your PostgreSQL credentials
-DATABASE_URL="postgresql://username:password@localhost:5432/movie_watchlist?schema=public"
-
-# Generate a secure random string for JWT_SECRET
-JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
-
-# Add your TMDB API key
-TMDB_API_KEY=your-tmdb-api-key-here
+DATABASE_URL="postgresql://user:password@host:port/database"
+JWT_SECRET=your-64-char-hex-secret  # Generate: openssl rand -hex 64
+TMDB_API_KEY=your-tmdb-api-key
 TMDB_BASE_URL=https://api.themoviedb.org/3
-
 FRONTEND_URL=http://localhost:5173
 ```
 
-**Generate Prisma Client and run migrations:**
+Run database setup and start server:
 
 ```bash
-# Generate Prisma Client
 npm run prisma:generate
-
-# Run database migrations
-npm run prisma:migrate
-
-# (Optional) Open Prisma Studio to view your database
-npm run prisma:studio
-```
-
-**Start the backend server:**
-
-```bash
-# Development mode with hot reload
+npx prisma db push
 npm run dev
-
-# Production build
-npm run build
-npm start
 ```
 
-The backend will run on `http://localhost:5000`
-
-### 5. Frontend Setup
-
-Open a new terminal window:
+### Frontend Setup
 
 ```bash
 cd frontend
-
-# Install dependencies
 npm install
+```
 
-# Start development server
+Create `frontend/.env`:
+
+```env
+VITE_API_URL=http://localhost:5001
+```
+
+Start the frontend:
+
+```bash
 npm run dev
 ```
 
-The frontend will run on `http://localhost:5173`
+Access at http://localhost:5173
 
 ## Project Structure
 
@@ -142,233 +110,146 @@ The frontend will run on `http://localhost:5173`
 movie-watchlist/
 ├── backend/
 │   ├── prisma/
-│   │   └── schema.prisma          # Database schema
+│   │   └── schema.prisma          # Database schema with indexes
 │   ├── src/
 │   │   ├── config/
 │   │   │   └── database.ts        # Prisma client
 │   │   ├── middleware/
-│   │   │   └── auth.ts            # JWT authentication middleware
+│   │   │   └── auth.ts            # JWT authentication
 │   │   ├── routes/
-│   │   │   ├── auth.ts            # Authentication routes
-│   │   │   ├── movies.ts          # Movie search routes
-│   │   │   ├── userMovies.ts      # User's rated movies
-│   │   │   ├── watchlist.ts       # Watchlist management
-│   │   │   └── recommendations.ts # Recommendation engine
+│   │   │   ├── auth.ts            # Auth with validation
+│   │   │   ├── movies.ts          # Movie search with pagination
+│   │   │   ├── userMovies.ts      # User ratings
+│   │   │   ├── watchlist.ts       # Watchlist with transactions
+│   │   │   └── recommendations.ts # Recommendations
 │   │   ├── services/
 │   │   │   ├── tmdb.ts            # TMDB API integration
-│   │   │   ├── recommendation.ts  # Recommendation algorithm
+│   │   │   ├── recommendation.ts  # Parallel recommendation fetching
 │   │   │   └── userPreferences.ts # User preference analysis
 │   │   ├── utils/
-│   │   │   └── jwt.ts             # JWT utilities
-│   │   └── index.ts               # Server entry point
-│   ├── package.json
-│   └── tsconfig.json
+│   │   │   └── jwt.ts             # Secure JWT utilities
+│   │   └── index.ts               # Server with security middleware
+│   └── package.json
 ├── frontend/
 │   ├── src/
 │   │   ├── components/
 │   │   │   ├── Auth/
-│   │   │   │   ├── Login.tsx
-│   │   │   │   └── Register.tsx
-│   │   │   ├── Movies/
-│   │   │   │   ├── MovieCard.tsx
-│   │   │   │   └── UserMovieCard.tsx
+│   │   │   ├── Movies/            # MovieCard, UserMovieCard
 │   │   │   ├── Layout.tsx
 │   │   │   └── ProtectedRoute.tsx
 │   │   ├── context/
-│   │   │   └── AuthContext.tsx    # Authentication state
+│   │   │   └── AuthContext.tsx
 │   │   ├── pages/
-│   │   │   ├── Dashboard.tsx
-│   │   │   ├── MyMovies.tsx
-│   │   │   ├── Watchlist.tsx
+│   │   │   ├── Dashboard.tsx      # With error handling
+│   │   │   ├── MyMovies.tsx       # With optimistic updates
+│   │   │   ├── Watchlist.tsx      # With rollback on error
 │   │   │   └── Recommendations.tsx
 │   │   ├── services/
 │   │   │   └── api.ts             # API client
-│   │   ├── App.tsx
-│   │   ├── main.tsx
-│   │   └── index.css
-│   ├── package.json
-│   └── tsconfig.json
+│   │   └── App.tsx
+│   └── package.json
+├── docs/                          # Detailed documentation
+├── CLAUDE.md                      # Developer guide
 └── README.md
 ```
 
 ## Usage
 
 ### 1. Create an Account
-
-1. Navigate to `http://localhost:5173`
-2. Click "Sign up" and create an account
-3. Login with your credentials
+Register at the app and login with your credentials.
 
 ### 2. Discover Movies
+Go to "Recommendations" page, search for movies, and rate them.
 
-1. Go to "Recommendations" page
-2. Use the search bar to find movies
-3. Rate movies or add them to your watchlist
-
-### 3. Rate Movies
-
-Click one of the rating buttons:
-- 👎 **Dislike**: Didn't enjoy it
-- 😐 **OK**: It was alright
-- 👍 **Like**: Really enjoyed it
-- ❤️ **Love**: Absolutely loved it!
+### 3. Rating System
+- **Dislike**: Didn't enjoy it
+- **OK**: It was alright
+- **Like**: Really enjoyed it
+- **Love**: Absolutely loved it!
 
 ### 4. Get Recommendations
-
-1. Rate at least 5-10 movies
-2. Visit the "Recommendations" tab
-3. Get personalized movie suggestions based on your preferences
+Rate at least 5-10 movies, then visit "Recommendations" to get personalized suggestions.
 
 ### 5. Manage Watchlist
-
-1. Add movies you want to watch to your watchlist
-2. When you watch them, mark as watched with a rating
-3. They'll automatically move to your rated movies
+Add movies to watch later. When you watch them, mark as watched with a rating.
 
 ## API Endpoints
 
 ### Authentication
-- `POST /api/auth/register` - Register new user
-- `POST /api/auth/login` - Login user
+- `POST /api/auth/register` - Register (with email validation)
+- `POST /api/auth/login` - Login
 
 ### Movies
-- `GET /api/movies/search?q=query` - Search movies
-- `GET /api/movies/popular` - Get popular movies
-- `GET /api/movies/:tmdbId` - Get movie details
+- `GET /api/movies/search?q=query&page=1` - Search (paginated 1-500)
+- `GET /api/movies/popular` - Popular movies
+- `GET /api/movies/:tmdbId` - Movie details
 
 ### User Movies
-- `GET /api/user/movies` - Get user's rated movies
-- `POST /api/user/movies` - Add/rate a movie
-- `PUT /api/user/movies/:id` - Update movie rating
-- `DELETE /api/user/movies/:id` - Remove movie
+- `GET /api/user/movies` - Get rated movies
+- `POST /api/user/movies` - Rate a movie
+- `PUT /api/user/movies/:id` - Update rating
+- `DELETE /api/user/movies/:id` - Remove
 
 ### Watchlist
 - `GET /api/watchlist` - Get watchlist
-- `POST /api/watchlist` - Add to watchlist
-- `DELETE /api/watchlist/:id` - Remove from watchlist
-- `POST /api/watchlist/:id/watched` - Mark as watched
+- `POST /api/watchlist` - Add (with priority validation)
+- `DELETE /api/watchlist/:id` - Remove
+- `POST /api/watchlist/:id/watched` - Mark watched (atomic transaction)
 
 ### Recommendations
-- `GET /api/recommendations` - Get personalized recommendations
-- `GET /api/recommendations/preferences` - Get user preferences
+- `GET /api/recommendations` - Get recommendations (parallel fetching)
+- `GET /api/recommendations/preferences` - User preferences
+
+### Health Check
+- `GET /health` - Server and database status
 
 ## Database Schema
 
 ### Users
-- id, email, username, passwordHash, createdAt, updatedAt
+- id, email (validated), username, passwordHash, createdAt
 
-### Movies
-- id, tmdbId, title, overview, posterPath, releaseDate, genres, director, cast, runtime
+### Movies (TMDB Cache)
+- id, tmdbId, title, overview, posterPath, genres, director, cast
+- Indexed: tmdbId
 
 ### UserMovies
 - id, userId, movieId, rating (DISLIKE/OK/LIKE/SUPER_LIKE), watched
+- Indexed: userId, movieId, rating
 
 ### Watchlist
-- id, userId, movieId, addedAt, priority (LOW/MEDIUM/HIGH)
+- id, userId, movieId, priority (LOW/MEDIUM/HIGH), addedAt
+- Indexed: userId, movieId
 
 ## Recommendation Algorithm
 
-The system uses content-based filtering:
+Content-based filtering with parallel API fetching:
 
 1. **Genre Matching (40%)**: Analyzes your favorite genres
 2. **Popularity Score (30%)**: Considers TMDB ratings
 3. **Vote Count (20%)**: Ensures quality recommendations
-4. **Recency Bonus (10%)**: Gives slight preference to recent releases
+4. **Recency Bonus (10%)**: Preference for recent releases
 
-The algorithm:
-- Extracts genres, directors, and cast from liked movies
-- Finds similar movies from TMDB
-- Scores candidates based on multiple factors
-- Filters out already-rated movies
-- Returns top-scored recommendations
+## Recent Improvements
 
-## Troubleshooting
+- Removed hardcoded JWT fallback (security)
+- Added rate limiting (DoS protection)
+- Added Helmet security headers
+- Database indexes for performance
+- Parallel TMDB API calls (faster recommendations)
+- Atomic transactions for watchlist operations
+- Input validation (email, ratings, pagination)
+- Error handling with retry buttons
+- Optimistic updates with rollback
+- Accessibility improvements (aria-labels)
 
-### Backend Issues
+## Contributing
 
-**Database connection error:**
-```bash
-# Check PostgreSQL is running
-pg_ctl status
-
-# Verify DATABASE_URL in .env is correct
-```
-
-**TMDB API errors:**
-- Verify your API key is correct
-- Check you haven't exceeded the free tier limit (1000 requests/day)
-
-**Prisma errors:**
-```bash
-# Reset database (WARNING: deletes all data)
-npx prisma migrate reset
-
-# Regenerate Prisma Client
-npm run prisma:generate
-```
-
-### Frontend Issues
-
-**API connection error:**
-- Ensure backend is running on port 5000
-- Check CORS settings in backend
-
-**Build errors:**
-```bash
-# Clear node_modules and reinstall
-rm -rf node_modules package-lock.json
-npm install
-```
-
-## Development
-
-### Running Tests
-
-```bash
-# Backend tests (to be implemented)
-cd backend
-npm test
-
-# Frontend tests (to be implemented)
-cd frontend
-npm test
-```
-
-### Code Formatting
-
-```bash
-# Format backend code
-cd backend
-npm run format
-
-# Format frontend code
-cd frontend
-npm run format
-```
-
-## Deployment
-
-### Backend (Heroku/Railway/Render)
-
-1. Set environment variables
-2. Provision PostgreSQL database
-3. Run migrations: `npm run prisma:migrate`
-4. Deploy with `npm start`
-
-### Frontend (Vercel/Netlify)
-
-1. Build: `npm run build`
-2. Deploy `dist` folder
-3. Set API URL environment variable
+Pull requests are welcome! See [CLAUDE.md](CLAUDE.md) for development guidelines.
 
 ## License
 
 MIT
 
-## Contributing
-
-Pull requests are welcome! For major changes, please open an issue first.
-
 ## Support
 
-For issues or questions, please open a GitHub issue.
+For issues, please open a GitHub issue with error details.
