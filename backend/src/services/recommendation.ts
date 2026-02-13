@@ -10,6 +10,16 @@ interface ScoredMovie extends TMDBMovie {
 // Minimum vote count threshold to filter out obscure movies with unreliable ratings
 const MIN_VOTE_COUNT = 100;
 
+// Fisher-Yates shuffle algorithm
+function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
 class RecommendationService {
   async generateRecommendations(userId: string, limit: number = 20): Promise<ScoredMovie[]> {
     // Get user preferences
@@ -100,10 +110,19 @@ class RecommendationService {
     // Score and rank candidates
     const scoredMovies = candidateMovies.map(movie => this.scoreMovie(movie, preferences));
 
-    // Sort by score and return top N
-    return scoredMovies
-      .sort((a, b) => b.score - a.score)
-      .slice(0, limit);
+    // Group movies into tiers by score, shuffle within each tier for variety
+    const tier1 = scoredMovies.filter(m => m.score >= 70); // Top recommendations
+    const tier2 = scoredMovies.filter(m => m.score >= 50 && m.score < 70); // Good matches
+    const tier3 = scoredMovies.filter(m => m.score < 50); // Fallback options
+
+    // Shuffle within tiers and concatenate
+    const shuffledResults = [
+      ...shuffleArray(tier1),
+      ...shuffleArray(tier2),
+      ...shuffleArray(tier3)
+    ];
+
+    return shuffledResults.slice(0, limit);
   }
 
   private scoreMovie(movie: TMDBMovie, preferences: any): ScoredMovie {
