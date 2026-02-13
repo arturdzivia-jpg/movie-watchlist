@@ -14,7 +14,8 @@ router.get('/search', authenticate, async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: 'Search query is required' });
     }
 
-    const pageNum = page ? parseInt(page as string) : 1;
+    const parsedPage = page ? parseInt(page as string) : 1;
+    const pageNum = Math.max(1, Math.min(isNaN(parsedPage) ? 1 : parsedPage, 500)); // TMDB max is 500 pages
     const results = await tmdbService.searchMovies(q, pageNum);
 
     res.json(results);
@@ -28,7 +29,8 @@ router.get('/search', authenticate, async (req: AuthRequest, res: Response) => {
 router.get('/popular', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const { page } = req.query;
-    const pageNum = page ? parseInt(page as string) : 1;
+    const parsedPage = page ? parseInt(page as string) : 1;
+    const pageNum = Math.max(1, Math.min(isNaN(parsedPage) ? 1 : parsedPage, 500)); // TMDB max is 500 pages
 
     const results = await tmdbService.getPopularMovies(pageNum);
 

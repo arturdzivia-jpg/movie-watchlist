@@ -27,7 +27,7 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onRate, onAddToWatchlist, 
       <div className="relative aspect-[2/3] bg-slate-700">
         <img
           src={posterUrl}
-          alt={movie.title}
+          alt={`Movie poster for ${movie.title}`}
           className="w-full h-full object-cover"
           onError={(e) => {
             e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="300" height="450"%3E%3Crect fill="%23334155" width="300" height="450"/%3E%3Ctext fill="%23cbd5e1" font-family="Arial" font-size="24" x="50%25" y="50%25" text-anchor="middle" dominant-baseline="middle"%3ENo Image%3C/text%3E%3C/svg%3E';
@@ -53,9 +53,10 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onRate, onAddToWatchlist, 
                 <button
                   key={btn.rating}
                   onClick={() => onRate?.(movie.id, btn.rating)}
+                  aria-label={`Rate ${movie.title} as ${btn.label}`}
                   className={`${btn.color} text-white px-3 py-2 rounded text-sm font-medium transition-colors flex items-center justify-center space-x-1`}
                 >
-                  <span>{btn.emoji}</span>
+                  <span aria-hidden="true">{btn.emoji}</span>
                   <span>{btn.label}</span>
                 </button>
               ))}
@@ -64,6 +65,7 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onRate, onAddToWatchlist, 
             {onAddToWatchlist && (
               <button
                 onClick={() => onAddToWatchlist(movie.id)}
+                aria-label={`Add ${movie.title} to watchlist`}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors"
               >
                 + Add to Watchlist

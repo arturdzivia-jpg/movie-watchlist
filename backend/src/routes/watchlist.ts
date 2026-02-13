@@ -92,12 +92,26 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: 'Movie already in watchlist' });
     }
 
+    // Validate priority if provided
+    let validatedPriority = Priority.MEDIUM;
+    if (priority) {
+      if (typeof priority !== 'string') {
+        return res.status(400).json({ error: 'Priority must be a string' });
+      }
+      const normalizedPriority = priority.toUpperCase();
+      const validPriorities = ['LOW', 'MEDIUM', 'HIGH'];
+      if (!validPriorities.includes(normalizedPriority)) {
+        return res.status(400).json({ error: 'Invalid priority value. Must be one of: LOW, MEDIUM, HIGH' });
+      }
+      validatedPriority = normalizedPriority as Priority;
+    }
+
     // Add to watchlist
     const watchlistItem = await prisma.watchlist.create({
       data: {
         userId,
         movieId: movie.id,
-        priority: priority ? (priority.toUpperCase() as Priority) : Priority.MEDIUM
+        priority: validatedPriority
       },
       include: {
         movie: true
@@ -142,13 +156,15 @@ router.post('/:id/watched', authenticate, async (req: AuthRequest, res: Response
     const { id } = req.params;
     const { rating } = req.body;
 
-    if (!rating) {
-      return res.status(400).json({ error: 'Rating is required' });
+    // Validate rating input
+    if (!rating || typeof rating !== 'string') {
+      return res.status(400).json({ error: 'Rating is required and must be a string' });
     }
 
     const validRatings = ['DISLIKE', 'OK', 'LIKE', 'SUPER_LIKE'];
-    if (!validRatings.includes(rating.toUpperCase())) {
-      return res.status(400).json({ error: 'Invalid rating value' });
+    const normalizedRating = rating.toUpperCase();
+    if (!validRatings.includes(normalizedRating)) {
+      return res.status(400).json({ error: 'Invalid rating value. Must be one of: DISLIKE, OK, LIKE, SUPER_LIKE' });
     }
 
     // Get watchlist item
@@ -163,22 +179,27 @@ router.post('/:id/watched', authenticate, async (req: AuthRequest, res: Response
       return res.status(404).json({ error: 'Watchlist item not found' });
     }
 
-    // Create user movie entry
-    const userMovie = await prisma.userMovie.create({
-      data: {
-        userId,
-        movieId: watchlistItem.movieId,
-        rating: rating.toUpperCase() as Rating,
-        watched: true
-      },
-      include: {
-        movie: true
-      }
-    });
+    // Use transaction to ensure atomicity - either both operations succeed or neither
+    const userMovie = await prisma.$transaction(async (tx) => {
+      // Create user movie entry
+      const created = await tx.userMovie.create({
+        data: {
+          userId,
+          movieId: watchlistItem.movieId,
+          rating: normalizedRating as Rating,
+          watched: true
+        },
+        include: {
+          movie: true
+        }
+      });
 
-    // Remove from watchlist
-    await prisma.watchlist.delete({
-      where: { id }
+      // Remove from watchlist
+      await tx.watchlist.delete({
+        where: { id }
+      });
+
+      return created;
     });
 
     res.json({

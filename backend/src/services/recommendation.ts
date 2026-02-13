@@ -32,23 +32,29 @@ class RecommendationService {
     const candidateMovies: TMDBMovie[] = [];
     const seenIds = new Set<number>();
 
-    // 1. Get recommendations based on user's top liked movies
+    // 1. Get recommendations based on user's top liked movies (parallel requests)
     const topLikedMovies = ratedMovies
       .filter(um => um.rating === 'SUPER_LIKE' || um.rating === 'LIKE')
       .slice(0, 5);
 
-    for (const userMovie of topLikedMovies) {
-      try {
-        const similar = await tmdbService.getSimilarMovies(userMovie.movie.tmdbId, 1);
-        similar.results.forEach(movie => {
-          if (!seenIds.has(movie.id) && !ratedTmdbIds.has(movie.id) && !watchlistTmdbIds.has(movie.id)) {
-            candidateMovies.push(movie);
-            seenIds.add(movie.id);
-          }
-        });
-      } catch (error) {
-        console.error(`Error getting similar movies for ${userMovie.movie.tmdbId}:`, error);
-      }
+    // Fetch similar movies in parallel instead of sequentially
+    const similarMoviesPromises = topLikedMovies.map(userMovie =>
+      tmdbService.getSimilarMovies(userMovie.movie.tmdbId, 1)
+        .catch(error => {
+          console.error(`Error getting similar movies for ${userMovie.movie.tmdbId}:`, error);
+          return { results: [] as TMDBMovie[] };
+        })
+    );
+
+    const similarMoviesResults = await Promise.all(similarMoviesPromises);
+
+    for (const similar of similarMoviesResults) {
+      similar.results.forEach(movie => {
+        if (!seenIds.has(movie.id) && !ratedTmdbIds.has(movie.id) && !watchlistTmdbIds.has(movie.id)) {
+          candidateMovies.push(movie);
+          seenIds.add(movie.id);
+        }
+      });
     }
 
     // 2. Discover movies by preferred genres

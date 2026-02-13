@@ -63,6 +63,9 @@ model UserMovie {
   movie     Movie    @relation(fields: [movieId], references: [id], onDelete: Cascade)
 
   @@unique([userId, movieId])
+  @@index([userId])
+  @@index([movieId])
+  @@index([rating])
   @@map("user_movies")
 }
 
@@ -83,5 +86,7 @@ model Watchlist {
   movie    Movie     @relation(fields: [movieId], references: [id], onDelete: Cascade)
 
   @@unique([userId, movieId])
+  @@index([userId])
+  @@index([movieId])
   @@map("watchlist")
 }

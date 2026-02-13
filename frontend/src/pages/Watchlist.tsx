@@ -1,9 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { watchlistAPI, WatchlistItem, Rating } from '../services/api';
+
+interface Genre {
+  id: number;
+  name: string;
+}
 
 const Watchlist: React.FC = () => {
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [markingWatched, setMarkingWatched] = useState<string | null>(null);
 
   useEffect(() => {
@@ -13,37 +20,49 @@ const Watchlist: React.FC = () => {
   const loadWatchlist = async () => {
     try {
       setIsLoading(true);
+      setError(null);
       const response = await watchlistAPI.getAll();
       setWatchlist(response.data);
-    } catch (error) {
-      console.error('Failed to load watchlist:', error);
+    } catch (err) {
+      console.error('Failed to load watchlist:', err);
+      setError('Failed to load watchlist. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleRemove = async (id: string) => {
-    if (!confirm('Remove this movie from your watchlist?')) {
+    if (!window.confirm('Remove this movie from your watchlist?')) {
       return;
     }
 
+    const previousWatchlist = watchlist;
+    // Optimistic update
+    setWatchlist(watchlist.filter(item => item.id !== id));
     try {
       await watchlistAPI.remove(id);
-      setWatchlist(watchlist.filter(item => item.id !== id));
-    } catch (error) {
-      console.error('Failed to remove from watchlist:', error);
-      alert('Failed to remove from watchlist');
+    } catch (err) {
+      console.error('Failed to remove from watchlist:', err);
+      // Rollback on error
+      setWatchlist(previousWatchlist);
+      setError('Failed to remove from watchlist. Please try again.');
+      setTimeout(() => setError(null), 3000);
     }
   };
 
   const handleMarkWatched = async (id: string, rating: Rating) => {
+    const previousWatchlist = watchlist;
     try {
       setMarkingWatched(id);
-      await watchlistAPI.markWatched(id, rating);
+      // Optimistic update
       setWatchlist(watchlist.filter(item => item.id !== id));
-    } catch (error) {
-      console.error('Failed to mark as watched:', error);
-      alert('Failed to mark as watched');
+      await watchlistAPI.markWatched(id, rating);
+    } catch (err) {
+      console.error('Failed to mark as watched:', err);
+      // Rollback on error
+      setWatchlist(previousWatchlist);
+      setError('Failed to mark as watched. Please try again.');
+      setTimeout(() => setError(null), 3000);
     } finally {
       setMarkingWatched(null);
     }
@@ -57,8 +76,27 @@ const Watchlist: React.FC = () => {
     );
   }
 
+  if (error && watchlist.length === 0) {
+    return (
+      <div className="bg-red-900/20 border border-red-600 rounded-lg p-6 text-center">
+        <p className="text-red-400 mb-4">{error}</p>
+        <button
+          onClick={loadWatchlist}
+          className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div>
+      {error && (
+        <div className="bg-red-900/20 border border-red-600 rounded-lg p-3 mb-4 text-center">
+          <p className="text-red-400">{error}</p>
+        </div>
+      )}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-white">Watchlist</h1>
         <div className="text-slate-400">
@@ -71,12 +109,12 @@ const Watchlist: React.FC = () => {
           <div className="text-6xl mb-4">📋</div>
           <h2 className="text-xl font-semibold text-white mb-2">Your watchlist is empty</h2>
           <p className="text-slate-400 mb-4">Add movies you want to watch later!</p>
-          <a
-            href="/recommendations"
+          <Link
+            to="/recommendations"
             className="inline-block px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
           >
             Discover Movies
-          </a>
+          </Link>
         </div>
       ) : (
         <div className="grid gap-4">
@@ -93,7 +131,7 @@ const Watchlist: React.FC = () => {
                   <div className="w-32 flex-shrink-0 bg-slate-700">
                     <img
                       src={posterUrl}
-                      alt={movie.title}
+                      alt={`Movie poster for ${movie.title}`}
                       className="w-full h-full object-cover"
                       onError={(e) => {
                         e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="300"%3E%3Crect fill="%23334155" width="200" height="300"/%3E%3Ctext fill="%23cbd5e1" font-family="Arial" font-size="16" x="50%25" y="50%25" text-anchor="middle" dominant-baseline="middle"%3ENo Image%3C/text%3E%3C/svg%3E';
@@ -124,7 +162,7 @@ const Watchlist: React.FC = () => {
 
                     {movie.genres && Array.isArray(movie.genres) && (
                       <div className="flex flex-wrap gap-2 mb-3">
-                        {movie.genres.map((genre: any) => (
+                        {(movie.genres as Genre[]).map((genre) => (
                           <span key={genre.id} className="bg-slate-700 text-slate-300 px-2 py-1 rounded text-xs">
                             {genre.name}
                           </span>
@@ -137,35 +175,40 @@ const Watchlist: React.FC = () => {
                       <button
                         onClick={() => handleMarkWatched(item.id, 'DISLIKE')}
                         disabled={markingWatched === item.id}
+                        aria-label={`Mark ${movie.title} as watched with Dislike rating`}
                         className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded text-sm transition-colors disabled:opacity-50"
                       >
-                        👎
+                        <span aria-hidden="true">👎</span>
                       </button>
                       <button
                         onClick={() => handleMarkWatched(item.id, 'OK')}
                         disabled={markingWatched === item.id}
+                        aria-label={`Mark ${movie.title} as watched with OK rating`}
                         className="bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1 rounded text-sm transition-colors disabled:opacity-50"
                       >
-                        😐
+                        <span aria-hidden="true">😐</span>
                       </button>
                       <button
                         onClick={() => handleMarkWatched(item.id, 'LIKE')}
                         disabled={markingWatched === item.id}
+                        aria-label={`Mark ${movie.title} as watched with Like rating`}
                         className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm transition-colors disabled:opacity-50"
                       >
-                        👍
+                        <span aria-hidden="true">👍</span>
                       </button>
                       <button
                         onClick={() => handleMarkWatched(item.id, 'SUPER_LIKE')}
                         disabled={markingWatched === item.id}
+                        aria-label={`Mark ${movie.title} as watched with Love rating`}
                         className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm transition-colors disabled:opacity-50"
                       >
-                        ❤️
+                        <span aria-hidden="true">❤️</span>
                       </button>
                       <div className="flex-1"></div>
                       <button
                         onClick={() => handleRemove(item.id)}
                         disabled={markingWatched === item.id}
+                        aria-label={`Remove ${movie.title} from watchlist`}
                         className="bg-red-600/20 hover:bg-red-600/30 text-red-400 px-3 py-1 rounded text-sm transition-colors border border-red-600/50 disabled:opacity-50"
                       >
                         Remove

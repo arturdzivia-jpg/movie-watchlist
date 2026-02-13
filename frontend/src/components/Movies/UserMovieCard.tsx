@@ -1,6 +1,11 @@
 import React from 'react';
 import { UserMovie, Rating } from '../../services/api';
 
+interface Genre {
+  id: number;
+  name: string;
+}
+
 interface UserMovieCardProps {
   userMovie: UserMovie;
   onUpdateRating?: (id: string, rating: Rating) => void;
@@ -33,7 +38,7 @@ const UserMovieCard: React.FC<UserMovieCardProps> = ({ userMovie, onUpdateRating
         <div className="w-32 flex-shrink-0 bg-slate-700">
           <img
             src={posterUrl}
-            alt={movie.title}
+            alt={`Movie poster for ${movie.title}`}
             className="w-full h-full object-cover"
             onError={(e) => {
               e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="300"%3E%3Crect fill="%23334155" width="200" height="300"/%3E%3Ctext fill="%23cbd5e1" font-family="Arial" font-size="16" x="50%25" y="50%25" text-anchor="middle" dominant-baseline="middle"%3ENo Image%3C/text%3E%3C/svg%3E';
@@ -59,7 +64,7 @@ const UserMovieCard: React.FC<UserMovieCardProps> = ({ userMovie, onUpdateRating
 
           {movie.genres && Array.isArray(movie.genres) && (
             <div className="flex flex-wrap gap-2 mb-3">
-              {movie.genres.map((genre: any) => (
+              {(movie.genres as Genre[]).map((genre) => (
                 <span key={genre.id} className="bg-slate-700 text-slate-300 px-2 py-1 rounded text-xs">
                   {genre.name}
                 </span>
@@ -68,9 +73,14 @@ const UserMovieCard: React.FC<UserMovieCardProps> = ({ userMovie, onUpdateRating
           )}
 
           <div className="flex items-center space-x-2">
+            <label htmlFor={`rating-${userMovie.id}`} className="sr-only">
+              Change rating for {movie.title}
+            </label>
             <select
+              id={`rating-${userMovie.id}`}
               value={rating}
               onChange={(e) => onUpdateRating?.(userMovie.id, e.target.value as Rating)}
+              aria-label={`Change rating for ${movie.title}`}
               className="bg-slate-700 text-white px-3 py-1 rounded text-sm border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               {allRatings.map((r) => (
@@ -83,6 +93,7 @@ const UserMovieCard: React.FC<UserMovieCardProps> = ({ userMovie, onUpdateRating
             {onDelete && (
               <button
                 onClick={() => onDelete(userMovie.id)}
+                aria-label={`Remove ${movie.title} from your list`}
                 className="bg-red-600/20 hover:bg-red-600/30 text-red-400 px-3 py-1 rounded text-sm transition-colors border border-red-600/50"
               >
                 Remove

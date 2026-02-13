@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { userMoviesAPI, UserMovie, Rating } from '../services/api';
 import UserMovieCard from '../components/Movies/UserMovieCard';
 
@@ -6,6 +7,7 @@ const MyMovies: React.FC = () => {
   const [movies, setMovies] = useState<UserMovie[]>([]);
   const [filteredMovies, setFilteredMovies] = useState<UserMovie[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filterRating, setFilterRating] = useState<Rating | 'ALL'>('ALL');
   const [sortBy, setSortBy] = useState<'date' | 'title' | 'rating'>('date');
 
@@ -20,10 +22,12 @@ const MyMovies: React.FC = () => {
   const loadMovies = async () => {
     try {
       setIsLoading(true);
+      setError(null);
       const response = await userMoviesAPI.getAll();
       setMovies(response.data);
-    } catch (error) {
-      console.error('Failed to load movies:', error);
+    } catch (err) {
+      console.error('Failed to load movies:', err);
+      setError('Failed to load your movies. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -58,26 +62,37 @@ const MyMovies: React.FC = () => {
   };
 
   const handleUpdateRating = async (id: string, rating: Rating) => {
+    const previousMovies = movies;
+    // Optimistic update
+    setMovies(movies.map(m => m.id === id ? { ...m, rating } : m));
     try {
       await userMoviesAPI.update(id, rating);
-      setMovies(movies.map(m => m.id === id ? { ...m, rating } : m));
-    } catch (error) {
-      console.error('Failed to update rating:', error);
-      alert('Failed to update rating');
+    } catch (err) {
+      console.error('Failed to update rating:', err);
+      // Rollback on error
+      setMovies(previousMovies);
+      setError('Failed to update rating. Please try again.');
+      // Clear error after 3 seconds
+      setTimeout(() => setError(null), 3000);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to remove this movie?')) {
+    if (!window.confirm('Are you sure you want to remove this movie?')) {
       return;
     }
 
+    const previousMovies = movies;
+    // Optimistic update
+    setMovies(movies.filter(m => m.id !== id));
     try {
       await userMoviesAPI.delete(id);
-      setMovies(movies.filter(m => m.id !== id));
-    } catch (error) {
-      console.error('Failed to delete movie:', error);
-      alert('Failed to delete movie');
+    } catch (err) {
+      console.error('Failed to delete movie:', err);
+      // Rollback on error
+      setMovies(previousMovies);
+      setError('Failed to delete movie. Please try again.');
+      setTimeout(() => setError(null), 3000);
     }
   };
 
@@ -89,8 +104,27 @@ const MyMovies: React.FC = () => {
     );
   }
 
+  if (error && movies.length === 0) {
+    return (
+      <div className="bg-red-900/20 border border-red-600 rounded-lg p-6 text-center">
+        <p className="text-red-400 mb-4">{error}</p>
+        <button
+          onClick={loadMovies}
+          className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div>
+      {error && (
+        <div className="bg-red-900/20 border border-red-600 rounded-lg p-3 mb-4 text-center">
+          <p className="text-red-400">{error}</p>
+        </div>
+      )}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-white">My Movies</h1>
         <div className="text-slate-400">
@@ -103,12 +137,12 @@ const MyMovies: React.FC = () => {
           <div className="text-6xl mb-4">🎬</div>
           <h2 className="text-xl font-semibold text-white mb-2">No movies yet</h2>
           <p className="text-slate-400 mb-4">Start by discovering and rating movies!</p>
-          <a
-            href="/recommendations"
+          <Link
+            to="/recommendations"
             className="inline-block px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
           >
             Discover Movies
-          </a>
+          </Link>
         </div>
       ) : (
         <>

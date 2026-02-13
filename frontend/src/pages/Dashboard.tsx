@@ -12,6 +12,7 @@ const Dashboard: React.FC = () => {
     watchlistCount: 0
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadStats();
@@ -19,6 +20,7 @@ const Dashboard: React.FC = () => {
 
   const loadStats = async () => {
     try {
+      setError(null);
       const [moviesRes, watchlistRes] = await Promise.all([
         userMoviesAPI.getAll(),
         watchlistAPI.getAll()
@@ -35,8 +37,9 @@ const Dashboard: React.FC = () => {
         dislikes: movies.filter(m => m.rating === 'DISLIKE').length,
         watchlistCount: watchlist.length
       });
-    } catch (error) {
-      console.error('Failed to load stats:', error);
+    } catch (err) {
+      console.error('Failed to load stats:', err);
+      setError('Failed to load dashboard data. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -46,6 +49,20 @@ const Dashboard: React.FC = () => {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="text-white text-xl">Loading...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-900/20 border border-red-600 rounded-lg p-6 text-center">
+        <p className="text-red-400 mb-4">{error}</p>
+        <button
+          onClick={loadStats}
+          className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+        >
+          Retry
+        </button>
       </div>
     );
   }

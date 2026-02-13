@@ -53,9 +53,15 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: 'tmdbId and rating are required' });
     }
 
+    // Validate rating type and value
+    if (typeof rating !== 'string') {
+      return res.status(400).json({ error: 'Rating must be a string' });
+    }
+
     const validRatings = ['DISLIKE', 'OK', 'LIKE', 'SUPER_LIKE'];
-    if (!validRatings.includes(rating.toUpperCase())) {
-      return res.status(400).json({ error: 'Invalid rating value' });
+    const normalizedRating = rating.toUpperCase();
+    if (!validRatings.includes(normalizedRating)) {
+      return res.status(400).json({ error: 'Invalid rating value. Must be one of: DISLIKE, OK, LIKE, SUPER_LIKE' });
     }
 
     // Fetch and cache movie details
@@ -107,13 +113,13 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
         }
       },
       update: {
-        rating: rating.toUpperCase() as Rating,
+        rating: normalizedRating as Rating,
         watched: watched !== undefined ? watched : true
       },
       create: {
         userId,
         movieId: movie.id,
-        rating: rating.toUpperCase() as Rating,
+        rating: normalizedRating as Rating,
         watched: watched !== undefined ? watched : true
       },
       include: {
@@ -138,11 +144,15 @@ router.put('/:id', authenticate, async (req: AuthRequest, res: Response) => {
     const updateData: any = {};
 
     if (rating) {
-      const validRatings = ['DISLIKE', 'OK', 'LIKE', 'SUPER_LIKE'];
-      if (!validRatings.includes(rating.toUpperCase())) {
-        return res.status(400).json({ error: 'Invalid rating value' });
+      if (typeof rating !== 'string') {
+        return res.status(400).json({ error: 'Rating must be a string' });
       }
-      updateData.rating = rating.toUpperCase() as Rating;
+      const validRatings = ['DISLIKE', 'OK', 'LIKE', 'SUPER_LIKE'];
+      const normalizedRating = rating.toUpperCase();
+      if (!validRatings.includes(normalizedRating)) {
+        return res.status(400).json({ error: 'Invalid rating value. Must be one of: DISLIKE, OK, LIKE, SUPER_LIKE' });
+      }
+      updateData.rating = normalizedRating as Rating;
     }
 
     if (watched !== undefined) {
