@@ -5,10 +5,11 @@ interface MovieCardProps {
   movie: TMDBMovie;
   onRate?: (tmdbId: number, rating: Rating) => void;
   onAddToWatchlist?: (tmdbId: number) => void;
+  onNotInterested?: (tmdbId: number) => void;
   showActions?: boolean;
 }
 
-const MovieCard: React.FC<MovieCardProps> = ({ movie, onRate, onAddToWatchlist, showActions = true }) => {
+const MovieCard: React.FC<MovieCardProps> = ({ movie, onRate, onAddToWatchlist, onNotInterested, showActions = true }) => {
   const posterUrl = movie.poster_path
     ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
     : '/placeholder-movie.png';
@@ -69,6 +70,16 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onRate, onAddToWatchlist, 
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors"
               >
                 + Add to Watchlist
+              </button>
+            )}
+
+            {onNotInterested && (
+              <button
+                onClick={() => onNotInterested(movie.id)}
+                aria-label={`Mark ${movie.title} as not interested`}
+                className="w-full bg-slate-600 hover:bg-slate-500 text-slate-300 hover:text-white px-4 py-2 rounded text-sm font-medium transition-colors"
+              >
+                Not Interested
               </button>
             )}
           </div>

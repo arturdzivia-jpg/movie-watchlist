@@ -259,6 +259,20 @@ const Recommendations: React.FC = () => {
     }
   };
 
+  const handleNotInterested = async (tmdbId: number) => {
+    try {
+      await userMoviesAPI.add(tmdbId, 'NOT_INTERESTED', false);
+      removeMovieFromCaches(tmdbId);
+    } catch (error: any) {
+      console.error('Failed to mark as not interested:', error);
+      if (error.response?.status === 400) {
+        alert('You have already rated this movie!');
+      } else {
+        alert('Failed to mark as not interested');
+      }
+    }
+  };
+
   // Swipe handlers
   const handleSwipe = (direction: SwipeDirection, _movie: DiscoverMovie) => {
     swipeDiscover.swipe(direction);
@@ -389,6 +403,7 @@ const Recommendations: React.FC = () => {
                           movie={movie}
                           onRate={handleRate}
                           onAddToWatchlist={handleAddToWatchlist}
+                          onNotInterested={handleNotInterested}
                         />
                         {movie.reasons && movie.reasons.length > 0 && (
                           <div className="mt-2 bg-blue-900/20 border border-blue-700/30 rounded p-2">
@@ -437,6 +452,7 @@ const Recommendations: React.FC = () => {
                       movie={movie}
                       onRate={handleRate}
                       onAddToWatchlist={handleAddToWatchlist}
+                      onNotInterested={handleNotInterested}
                     />
                   ))}
                 </div>
