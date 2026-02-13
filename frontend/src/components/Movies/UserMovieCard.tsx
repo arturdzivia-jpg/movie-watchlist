@@ -22,6 +22,7 @@ const UserMovieCard: React.FC<UserMovieCardProps> = ({ userMovie, onUpdateRating
   const year = movie.releaseDate ? new Date(movie.releaseDate).getFullYear() : 'N/A';
 
   const ratingConfig: Record<Rating, { emoji: string; label: string; color: string }> = {
+    NOT_INTERESTED: { emoji: '🚫', label: 'Not Interested', color: 'bg-slate-600' },
     DISLIKE: { emoji: '👎', label: 'Dislike', color: 'bg-gray-600' },
     OK: { emoji: '😐', label: 'OK', color: 'bg-yellow-600' },
     LIKE: { emoji: '👍', label: 'Like', color: 'bg-green-600' },
@@ -30,6 +31,7 @@ const UserMovieCard: React.FC<UserMovieCardProps> = ({ userMovie, onUpdateRating
 
   const currentRating = ratingConfig[rating];
 
+  // Only show watched ratings in the dropdown (NOT_INTERESTED is for swipe-left only)
   const allRatings: Rating[] = ['DISLIKE', 'OK', 'LIKE', 'SUPER_LIKE'];
 
   return (

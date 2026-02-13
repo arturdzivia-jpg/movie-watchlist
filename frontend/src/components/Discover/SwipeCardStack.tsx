@@ -55,17 +55,14 @@ const SwipeCardStack: React.FC<SwipeCardStackProps> = ({
   const handleDragEnd = useCallback(() => {
     if (!dragState.isDragging || cards.length === 0) return;
 
-    const { currentX, currentY } = dragState;
+    const { currentX } = dragState;
     let direction: SwipeDirection | null = null;
 
+    // Only horizontal swipes (left/right)
     if (currentX > SWIPE_THRESHOLD) {
       direction = 'right';
     } else if (currentX < -SWIPE_THRESHOLD) {
       direction = 'left';
-    } else if (currentY < -SWIPE_THRESHOLD) {
-      direction = 'up';
-    } else if (currentY > SWIPE_THRESHOLD) {
-      direction = 'down';
     }
 
     if (direction) {
@@ -159,34 +156,26 @@ const SwipeCardStack: React.FC<SwipeCardStackProps> = ({
     return null;
   }
 
-  // Calculate swipe out transform
+  // Calculate swipe out transform (horizontal only)
   const getSwipeOutTransform = (direction: SwipeDirection) => {
     switch (direction) {
       case 'left':
         return 'translateX(-150%) rotate(-30deg)';
       case 'right':
         return 'translateX(150%) rotate(30deg)';
-      case 'up':
-        return 'translateY(-150%) rotate(0deg)';
-      case 'down':
-        return 'translateY(150%) rotate(0deg)';
       default:
         return '';
     }
   };
 
-  // Determine overlay based on drag position
+  // Determine overlay based on drag position (horizontal only)
   const getOverlay = () => {
-    const { currentX, currentY } = dragState;
-    if (Math.abs(currentX) > 30 || Math.abs(currentY) > 30) {
+    const { currentX } = dragState;
+    if (Math.abs(currentX) > 30) {
       if (currentX > 50) {
-        return { text: 'LIKE', color: 'bg-green-500/40', textColor: 'text-green-500', borderColor: 'border-green-500' };
+        return { text: 'WANT TO WATCH', color: 'bg-blue-500/40', textColor: 'text-blue-400', borderColor: 'border-blue-400' };
       } else if (currentX < -50) {
-        return { text: 'NOPE', color: 'bg-red-500/40', textColor: 'text-red-500', borderColor: 'border-red-500' };
-      } else if (currentY < -50) {
-        return { text: 'WATCHLIST', color: 'bg-blue-500/40', textColor: 'text-blue-500', borderColor: 'border-blue-500' };
-      } else if (currentY > 50) {
-        return { text: 'SKIP', color: 'bg-slate-500/40', textColor: 'text-slate-300', borderColor: 'border-slate-400' };
+        return { text: 'NOT INTERESTED', color: 'bg-slate-500/40', textColor: 'text-slate-300', borderColor: 'border-slate-400' };
       }
     }
     return null;

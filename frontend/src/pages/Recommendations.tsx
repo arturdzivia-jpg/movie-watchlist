@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { discoverAPI, userMoviesAPI, watchlistAPI, DiscoverMovie, DiscoverCategory, Rating, moviesAPI, TMDBMovie } from '../services/api';
 import MovieCard from '../components/Movies/MovieCard';
-import { SwipeCardStack, SwipeControls } from '../components/Discover';
+import { SwipeCardStack, SwipeControls, RatingModal } from '../components/Discover';
 import { useSwipeDiscover } from '../hooks/useSwipeDiscover';
-import { SwipeDirection } from '../types/discover';
+import type { SwipeDirection } from '../types/discover';
 
 type ViewMode = 'grid' | 'swipe';
 
@@ -218,13 +218,6 @@ const Recommendations: React.FC = () => {
     // Card animation completed
   };
 
-  const triggerSwipe = (direction: SwipeDirection) => {
-    if ((window as any).__triggerSwipe) {
-      (window as any).__triggerSwipe(direction);
-    }
-    swipeDiscover.swipe(direction);
-  };
-
   return (
     <div className="relative">
       {/* Header with view toggle */}
@@ -408,17 +401,14 @@ const Recommendations: React.FC = () => {
         <div className="flex flex-col items-center">
           {/* Session stats */}
           <div className="flex gap-3 mb-6 text-sm flex-wrap justify-center">
-            <div className="bg-green-900/30 text-green-400 px-3 py-1 rounded-full">
-              <span aria-hidden="true">&#128077; </span>{swipeDiscover.stats.liked}
-            </div>
-            <div className="bg-red-900/30 text-red-400 px-3 py-1 rounded-full">
-              <span aria-hidden="true">&#128078; </span>{swipeDiscover.stats.disliked}
-            </div>
             <div className="bg-blue-900/30 text-blue-400 px-3 py-1 rounded-full">
-              <span aria-hidden="true">&#128278; </span>{swipeDiscover.stats.watchlisted}
+              <span aria-hidden="true">&#128278; </span>{swipeDiscover.stats.wantToWatch} Want to Watch
             </div>
             <div className="bg-slate-700/50 text-slate-400 px-3 py-1 rounded-full">
-              <span aria-hidden="true">&#8594; </span>{swipeDiscover.stats.skipped}
+              <span aria-hidden="true">&#10060; </span>{swipeDiscover.stats.notInterested} Not Interested
+            </div>
+            <div className="bg-purple-900/30 text-purple-400 px-3 py-1 rounded-full">
+              <span aria-hidden="true">&#127916; </span>{swipeDiscover.stats.alreadyWatched} Rated
             </div>
           </div>
 
@@ -444,14 +434,12 @@ const Recommendations: React.FC = () => {
                 You've seen all recommendations!
               </h2>
               <p className="text-slate-400 mb-4">
-                This session you've rated {swipeDiscover.stats.total} movies.
+                This session you've processed {swipeDiscover.stats.total} movies.
               </p>
               <div className="text-sm text-slate-300 mb-6 space-y-1">
-                <p>Liked: {swipeDiscover.stats.liked + swipeDiscover.stats.superLiked}</p>
-                <p>Disliked: {swipeDiscover.stats.disliked}</p>
-                <p>OK: {swipeDiscover.stats.ok}</p>
-                <p>Added to watchlist: {swipeDiscover.stats.watchlisted}</p>
-                <p>Skipped: {swipeDiscover.stats.skipped}</p>
+                <p>Added to watchlist: {swipeDiscover.stats.wantToWatch}</p>
+                <p>Not interested: {swipeDiscover.stats.notInterested}</p>
+                <p>Already watched & rated: {swipeDiscover.stats.alreadyWatched}</p>
               </div>
               <button
                 onClick={swipeDiscover.loadMore}
@@ -475,21 +463,26 @@ const Recommendations: React.FC = () => {
 
               {/* Controls */}
               <SwipeControls
-                onSwipeLeft={() => triggerSwipe('left')}
-                onSwipeRight={() => triggerSwipe('right')}
-                onSwipeUp={() => triggerSwipe('up')}
-                onSkip={() => triggerSwipe('down')}
-                onRate={swipeDiscover.rateWithButton}
                 onUndo={swipeDiscover.undo}
+                onAlreadyWatched={swipeDiscover.openRatingModal}
                 canUndo={swipeDiscover.canUndo}
                 isProcessing={swipeDiscover.isProcessing}
               />
 
               {/* Swipe hints */}
               <div className="text-slate-500 text-xs text-center mt-2 space-y-1">
-                <p>Swipe left to dislike, right to like, up for watchlist, down to skip</p>
-                <p>or use the buttons below</p>
+                <p>Swipe right to add to watchlist, left if not interested</p>
+                <p>Tap "Already Watched" to rate a movie you've seen</p>
               </div>
+
+              {/* Rating Modal */}
+              <RatingModal
+                isOpen={swipeDiscover.ratingModal.isOpen}
+                movie={swipeDiscover.ratingModal.movie}
+                onClose={swipeDiscover.closeRatingModal}
+                onRate={swipeDiscover.submitRating}
+                isProcessing={swipeDiscover.isProcessing}
+              />
 
               {/* Pre-fetching indicator */}
               {swipeDiscover.isPrefetching && (

@@ -11,36 +11,20 @@ const SwipeOverlay: React.FC<SwipeOverlayProps> = ({ direction, progress }) => {
 
   const overlayConfig: Record<SwipeDirection, { bg: string; border: string; icon: string; text: string; textColor: string; position: string }> = {
     left: {
-      bg: 'bg-red-500/30',
-      border: 'border-red-500',
-      icon: '&#128078;', // thumbs down
-      text: 'NOPE',
-      textColor: 'text-red-500',
+      bg: 'bg-slate-500/30',
+      border: 'border-slate-400',
+      icon: '&#10060;', // X mark
+      text: 'NOT INTERESTED',
+      textColor: 'text-slate-300',
       position: 'left-4 top-1/2 -translate-y-1/2',
     },
     right: {
-      bg: 'bg-green-500/30',
-      border: 'border-green-500',
-      icon: '&#128077;', // thumbs up
-      text: 'LIKE',
-      textColor: 'text-green-500',
-      position: 'right-4 top-1/2 -translate-y-1/2',
-    },
-    up: {
       bg: 'bg-blue-500/30',
-      border: 'border-blue-500',
+      border: 'border-blue-400',
       icon: '&#128278;', // bookmark
-      text: 'WATCHLIST',
-      textColor: 'text-blue-500',
-      position: 'top-4 left-1/2 -translate-x-1/2',
-    },
-    down: {
-      bg: 'bg-slate-500/30',
-      border: 'border-slate-400',
-      icon: '&#8594;', // arrow
-      text: 'SKIP',
-      textColor: 'text-slate-300',
-      position: 'bottom-4 left-1/2 -translate-x-1/2',
+      text: 'WANT TO WATCH',
+      textColor: 'text-blue-400',
+      position: 'right-4 top-1/2 -translate-y-1/2',
     },
   };
 

@@ -161,10 +161,10 @@ router.post('/:id/watched', authenticate, async (req: AuthRequest, res: Response
       return res.status(400).json({ error: 'Rating is required and must be a string' });
     }
 
-    const validRatings = ['DISLIKE', 'OK', 'LIKE', 'SUPER_LIKE'];
+    const validRatings = ['NOT_INTERESTED', 'DISLIKE', 'OK', 'LIKE', 'SUPER_LIKE'];
     const normalizedRating = rating.toUpperCase();
     if (!validRatings.includes(normalizedRating)) {
-      return res.status(400).json({ error: 'Invalid rating value. Must be one of: DISLIKE, OK, LIKE, SUPER_LIKE' });
+      return res.status(400).json({ error: 'Invalid rating value. Must be one of: NOT_INTERESTED, DISLIKE, OK, LIKE, SUPER_LIKE' });
     }
 
     // Get watchlist item

@@ -1,17 +1,14 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { DiscoverMovie, DiscoverCategory, Rating, discoverAPI, userMoviesAPI, watchlistAPI } from '../services/api';
-import { SwipeDirection, SwipeAction, SwipeSessionStats, UseSwipeDiscoverReturn } from '../types/discover';
+import { SwipeDirection, SwipeAction, SwipeSessionStats, RatingModalState, UseSwipeDiscoverReturn } from '../types/discover';
 
 const PREFETCH_THRESHOLD = 10;
 const MAX_UNDO_HISTORY = 3;
 
 const initialStats: SwipeSessionStats = {
-  liked: 0,
-  disliked: 0,
-  ok: 0,
-  superLiked: 0,
-  watchlisted: 0,
-  skipped: 0,
+  wantToWatch: 0,
+  notInterested: 0,
+  alreadyWatched: 0,
   total: 0,
 };
 
@@ -25,6 +22,10 @@ export const useSwipeDiscover = (category: DiscoverCategory = 'for_you'): UseSwi
   const [error, setError] = useState<string | null>(null);
   const [seenIds, setSeenIds] = useState<Set<number>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
+  const [ratingModal, setRatingModal] = useState<RatingModalState>({
+    isOpen: false,
+    movie: null,
+  });
   const prevCategoryRef = useRef(category);
 
   // Load movies for the current category
@@ -51,6 +52,7 @@ export const useSwipeDiscover = (category: DiscoverCategory = 'for_you'): UseSwi
       setSeenIds(new Set());
       setCurrentPage(1);
       setError(null);
+      setRatingModal({ isOpen: false, movie: null });
     }
   }, [category]);
 
@@ -100,96 +102,48 @@ export const useSwipeDiscover = (category: DiscoverCategory = 'for_you'): UseSwi
     prefetch();
   }, [cardStack.length, isPrefetching, isLoading, loadMovies, currentPage]);
 
-  // Map swipe direction to rating
-  const directionToRating = (direction: SwipeDirection): Rating | null => {
-    switch (direction) {
-      case 'left':
-        return 'DISLIKE';
-      case 'right':
-        return 'LIKE';
-      case 'up':
-        return null; // Watchlist, not a rating
-      case 'down':
-        return null; // Skip, not a rating
-      default:
-        return null;
-    }
-  };
-
-  // Update stats based on action
-  const updateStats = useCallback((action: Rating | 'WATCHLIST' | 'SKIP', increment: number) => {
-    setStats((prev) => {
-      const updated = { ...prev };
-      updated.total += increment;
-      switch (action) {
-        case 'LIKE':
-          updated.liked += increment;
-          break;
-        case 'DISLIKE':
-          updated.disliked += increment;
-          break;
-        case 'OK':
-          updated.ok += increment;
-          break;
-        case 'SUPER_LIKE':
-          updated.superLiked += increment;
-          break;
-        case 'WATCHLIST':
-          updated.watchlisted += increment;
-          break;
-        case 'SKIP':
-          updated.skipped += increment;
-          break;
-      }
-      return updated;
-    });
+  // Update stats helper
+  const updateStats = useCallback((type: 'wantToWatch' | 'notInterested' | 'alreadyWatched', increment: number) => {
+    setStats((prev) => ({
+      ...prev,
+      [type]: prev[type] + increment,
+      total: prev.total + increment,
+    }));
   }, []);
 
-  // Handle swipe gesture
+  // Handle swipe gesture - simplified to left/right only
   const swipe = useCallback(
     async (direction: SwipeDirection) => {
       if (cardStack.length === 0 || isProcessing) return;
 
       const movie = cardStack[0];
-      const rating = directionToRating(direction);
 
       setIsProcessing(true);
-
       // Optimistic update - remove card immediately
       setCardStack((prev) => prev.slice(1));
 
       try {
         let apiRecordId: string | undefined;
+        let action: 'WATCHLIST' | 'NOT_INTERESTED';
 
-        if (direction === 'down') {
-          // Skip - no API call, just remove from stack
-          updateStats('SKIP', 1);
-          // Add to undo history (skip actions can be undone locally)
-          const swipeAction: SwipeAction = {
-            movie,
-            action: 'SKIP',
-            apiRecordId: undefined,
-            timestamp: Date.now(),
-          };
-          setSwipeHistory((prev) => [swipeAction, ...prev].slice(0, MAX_UNDO_HISTORY));
-          setIsProcessing(false);
-          return;
-        } else if (direction === 'up') {
+        if (direction === 'right') {
           // Add to watchlist
           const response = await watchlistAPI.add(movie.id);
           apiRecordId = response.data.id;
-          updateStats('WATCHLIST', 1);
-        } else if (rating) {
-          // Rate movie
-          const response = await userMoviesAPI.add(movie.id, rating, true);
+          action = 'WATCHLIST';
+          updateStats('wantToWatch', 1);
+        } else {
+          // Mark as not interested (left swipe)
+          const response = await userMoviesAPI.add(movie.id, 'NOT_INTERESTED', false);
           apiRecordId = response.data.id;
-          updateStats(rating, 1);
+          action = 'NOT_INTERESTED';
+          updateStats('notInterested', 1);
         }
 
         // Add to undo history
         const swipeAction: SwipeAction = {
           movie,
-          action: direction === 'up' ? 'WATCHLIST' : rating!,
+          action,
           apiRecordId,
           timestamp: Date.now(),
         };
@@ -200,7 +154,6 @@ export const useSwipeDiscover = (category: DiscoverCategory = 'for_you'): UseSwi
 
         if (err.response?.status === 400) {
           // Movie already rated or in watchlist - card already removed, that's fine
-          // Just don't add to undo history since there's nothing to undo
         } else if (err.response?.status === 500) {
           // Server error - rollback and restore card
           setCardStack((prev) => [movie, ...prev]);
@@ -217,22 +170,37 @@ export const useSwipeDiscover = (category: DiscoverCategory = 'for_you'): UseSwi
     [cardStack, isProcessing, updateStats]
   );
 
-  // Handle button rating (OK, SUPER_LIKE)
-  const rateWithButton = useCallback(
-    async (rating: Rating) => {
-      if (cardStack.length === 0 || isProcessing) return;
+  // Rating modal handlers
+  const openRatingModal = useCallback(() => {
+    if (cardStack.length === 0 || isProcessing) return;
+    setRatingModal({
+      isOpen: true,
+      movie: cardStack[0],
+    });
+  }, [cardStack, isProcessing]);
 
-      const movie = cardStack[0];
+  const closeRatingModal = useCallback(() => {
+    setRatingModal({
+      isOpen: false,
+      movie: null,
+    });
+  }, []);
+
+  // Submit rating from modal (for already watched movies)
+  const submitRating = useCallback(
+    async (rating: Rating) => {
+      const movie = ratingModal.movie;
+      if (!movie || isProcessing) return;
 
       setIsProcessing(true);
-
-      // Optimistic update
+      // Optimistic update - remove card immediately
       setCardStack((prev) => prev.slice(1));
+      closeRatingModal();
 
       try {
         const response = await userMoviesAPI.add(movie.id, rating, true);
 
-        updateStats(rating, 1);
+        updateStats('alreadyWatched', 1);
 
         // Add to undo history
         const swipeAction: SwipeAction = {
@@ -243,11 +211,6 @@ export const useSwipeDiscover = (category: DiscoverCategory = 'for_you'): UseSwi
         };
 
         setSwipeHistory((prev) => [swipeAction, ...prev].slice(0, MAX_UNDO_HISTORY));
-
-        // Trigger visual card removal
-        if ((window as any).__triggerSwipe) {
-          // Card already removed, skip visual swipe
-        }
       } catch (err: any) {
         console.error('Failed to rate movie:', err);
 
@@ -255,18 +218,19 @@ export const useSwipeDiscover = (category: DiscoverCategory = 'for_you'): UseSwi
         setCardStack((prev) => [movie, ...prev]);
 
         if (err.response?.status === 400) {
+          // Already rated - remove from stack anyway
           setCardStack((prev) => prev.filter((m) => m.id !== movie.id));
         } else {
-          setError('Failed to save. Please try again.');
+          setError('Failed to save rating. Please try again.');
         }
       } finally {
         setIsProcessing(false);
       }
     },
-    [cardStack, isProcessing, updateStats]
+    [ratingModal.movie, isProcessing, closeRatingModal, updateStats]
   );
 
-  // Undo last swipe
+  // Undo last action
   const undo = useCallback(async () => {
     if (swipeHistory.length === 0 || isProcessing) return;
 
@@ -274,11 +238,11 @@ export const useSwipeDiscover = (category: DiscoverCategory = 'for_you'): UseSwi
     setIsProcessing(true);
 
     try {
-      // Delete the API record (skip actions have no API record)
+      // Delete the API record
       if (lastAction.apiRecordId) {
         if (lastAction.action === 'WATCHLIST') {
           await watchlistAPI.remove(lastAction.apiRecordId);
-        } else if (lastAction.action !== 'SKIP') {
+        } else {
           await userMoviesAPI.delete(lastAction.apiRecordId);
         }
       }
@@ -287,7 +251,14 @@ export const useSwipeDiscover = (category: DiscoverCategory = 'for_you'): UseSwi
       setCardStack((prev) => [lastAction.movie, ...prev]);
 
       // Update stats (decrement)
-      updateStats(lastAction.action, -1);
+      if (lastAction.action === 'WATCHLIST') {
+        updateStats('wantToWatch', -1);
+      } else if (lastAction.action === 'NOT_INTERESTED') {
+        updateStats('notInterested', -1);
+      } else {
+        // It was a rating from modal
+        updateStats('alreadyWatched', -1);
+      }
 
       // Remove from history
       setSwipeHistory((prev) => prev.slice(1));
@@ -323,12 +294,6 @@ export const useSwipeDiscover = (category: DiscoverCategory = 'for_you'): UseSwi
     }
   }, [isLoading, isPrefetching, loadMovies, currentPage]);
 
-  // Skip current movie (no rating, no watchlist)
-  const skip = useCallback(async () => {
-    if (cardStack.length === 0 || isProcessing) return;
-    await swipe('down');
-  }, [cardStack.length, isProcessing, swipe]);
-
   // Reset session
   const reset = useCallback(() => {
     setCardStack([]);
@@ -336,6 +301,7 @@ export const useSwipeDiscover = (category: DiscoverCategory = 'for_you'): UseSwi
     setStats(initialStats);
     setSeenIds(new Set());
     setError(null);
+    setRatingModal({ isOpen: false, movie: null });
   }, []);
 
   return {
@@ -347,9 +313,11 @@ export const useSwipeDiscover = (category: DiscoverCategory = 'for_you'): UseSwi
     stats,
     error,
     canUndo: swipeHistory.length > 0,
+    ratingModal,
     swipe,
-    rateWithButton,
-    skip,
+    openRatingModal,
+    closeRatingModal,
+    submitRating,
     undo,
     loadMore,
     reset,

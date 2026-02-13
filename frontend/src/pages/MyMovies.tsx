@@ -47,10 +47,11 @@ const MyMovies: React.FC = () => {
         return a.movie.title.localeCompare(b.movie.title);
       } else if (sortBy === 'rating') {
         const ratingOrder: Record<Rating, number> = {
-          SUPER_LIKE: 4,
-          LIKE: 3,
-          OK: 2,
-          DISLIKE: 1
+          SUPER_LIKE: 5,
+          LIKE: 4,
+          OK: 3,
+          DISLIKE: 2,
+          NOT_INTERESTED: 1
         };
         return ratingOrder[b.rating] - ratingOrder[a.rating];
       } else {

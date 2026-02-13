@@ -61,7 +61,7 @@ export interface Movie {
   runtime: number | null;
 }
 
-export type Rating = 'DISLIKE' | 'OK' | 'LIKE' | 'SUPER_LIKE';
+export type Rating = 'NOT_INTERESTED' | 'DISLIKE' | 'OK' | 'LIKE' | 'SUPER_LIKE';
 
 export interface UserMovie {
   id: string;
