@@ -1,0 +1,309 @@
+import { useState, useCallback, useEffect } from 'react';
+import { Recommendation, Rating, recommendationsAPI, userMoviesAPI, watchlistAPI } from '../services/api';
+import { SwipeDirection, SwipeAction, SwipeSessionStats, UseSwipeDiscoverReturn } from '../types/discover';
+
+const INITIAL_LOAD_COUNT = 30;
+const PREFETCH_THRESHOLD = 10;
+const MAX_UNDO_HISTORY = 3;
+
+const initialStats: SwipeSessionStats = {
+  liked: 0,
+  disliked: 0,
+  ok: 0,
+  superLiked: 0,
+  watchlisted: 0,
+  total: 0,
+};
+
+export const useSwipeDiscover = (): UseSwipeDiscoverReturn => {
+  const [cardStack, setCardStack] = useState<Recommendation[]>([]);
+  const [swipeHistory, setSwipeHistory] = useState<SwipeAction[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isPrefetching, setIsPrefetching] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [stats, setStats] = useState<SwipeSessionStats>(initialStats);
+  const [error, setError] = useState<string | null>(null);
+  const [seenIds, setSeenIds] = useState<Set<number>>(new Set());
+
+  // Load initial recommendations
+  const loadRecommendations = useCallback(async (count: number = INITIAL_LOAD_COUNT) => {
+    try {
+      const response = await recommendationsAPI.get(count);
+      const newMovies = response.data.recommendations.filter(
+        (movie) => !seenIds.has(movie.id)
+      );
+      return newMovies;
+    } catch (err) {
+      console.error('Failed to load recommendations:', err);
+      throw err;
+    }
+  }, [seenIds]);
+
+  // Initial load
+  useEffect(() => {
+    const init = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const movies = await loadRecommendations(INITIAL_LOAD_COUNT);
+        setCardStack(movies);
+        setSeenIds(new Set(movies.map((m) => m.id)));
+      } catch (err) {
+        setError('Failed to load recommendations. Please try again.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    init();
+  }, []);
+
+  // Pre-fetch when running low on cards
+  useEffect(() => {
+    const prefetch = async () => {
+      if (cardStack.length <= PREFETCH_THRESHOLD && !isPrefetching && !isLoading) {
+        setIsPrefetching(true);
+        try {
+          const newMovies = await loadRecommendations(INITIAL_LOAD_COUNT);
+          if (newMovies.length > 0) {
+            setCardStack((prev) => [...prev, ...newMovies]);
+            setSeenIds((prev) => {
+              const updated = new Set(prev);
+              newMovies.forEach((m) => updated.add(m.id));
+              return updated;
+            });
+          }
+        } catch (err) {
+          console.error('Pre-fetch failed:', err);
+        } finally {
+          setIsPrefetching(false);
+        }
+      }
+    };
+    prefetch();
+  }, [cardStack.length, isPrefetching, isLoading, loadRecommendations]);
+
+  // Map swipe direction to rating
+  const directionToRating = (direction: SwipeDirection): Rating | null => {
+    switch (direction) {
+      case 'left':
+        return 'DISLIKE';
+      case 'right':
+        return 'LIKE';
+      case 'up':
+        return null; // Watchlist, not a rating
+      default:
+        return null;
+    }
+  };
+
+  // Update stats based on action
+  const updateStats = useCallback((action: Rating | 'WATCHLIST', increment: number) => {
+    setStats((prev) => {
+      const updated = { ...prev };
+      updated.total += increment;
+      switch (action) {
+        case 'LIKE':
+          updated.liked += increment;
+          break;
+        case 'DISLIKE':
+          updated.disliked += increment;
+          break;
+        case 'OK':
+          updated.ok += increment;
+          break;
+        case 'SUPER_LIKE':
+          updated.superLiked += increment;
+          break;
+        case 'WATCHLIST':
+          updated.watchlisted += increment;
+          break;
+      }
+      return updated;
+    });
+  }, []);
+
+  // Handle swipe gesture
+  const swipe = useCallback(
+    async (direction: SwipeDirection) => {
+      if (cardStack.length === 0 || isProcessing) return;
+
+      const movie = cardStack[0];
+      const rating = directionToRating(direction);
+
+      setIsProcessing(true);
+
+      // Optimistic update - remove card immediately
+      setCardStack((prev) => prev.slice(1));
+
+      try {
+        let apiRecordId: string | undefined;
+
+        if (direction === 'up') {
+          // Add to watchlist
+          const response = await watchlistAPI.add(movie.id);
+          apiRecordId = response.data.id;
+          updateStats('WATCHLIST', 1);
+        } else if (rating) {
+          // Rate movie
+          const response = await userMoviesAPI.add(movie.id, rating, true);
+          apiRecordId = response.data.id;
+          updateStats(rating, 1);
+        }
+
+        // Add to undo history
+        const swipeAction: SwipeAction = {
+          movie,
+          action: direction === 'up' ? 'WATCHLIST' : rating!,
+          apiRecordId,
+          timestamp: Date.now(),
+        };
+
+        setSwipeHistory((prev) => [swipeAction, ...prev].slice(0, MAX_UNDO_HISTORY));
+      } catch (err: any) {
+        console.error('Failed to process swipe:', err);
+
+        // Rollback - restore card
+        setCardStack((prev) => [movie, ...prev]);
+
+        if (err.response?.status === 400) {
+          // Movie already rated or in watchlist, just remove from stack
+          setCardStack((prev) => prev.filter((m) => m.id !== movie.id));
+        } else {
+          setError('Failed to save. Please try again.');
+        }
+      } finally {
+        setIsProcessing(false);
+      }
+    },
+    [cardStack, isProcessing, updateStats]
+  );
+
+  // Handle button rating (OK, SUPER_LIKE)
+  const rateWithButton = useCallback(
+    async (rating: Rating) => {
+      if (cardStack.length === 0 || isProcessing) return;
+
+      const movie = cardStack[0];
+
+      setIsProcessing(true);
+
+      // Optimistic update
+      setCardStack((prev) => prev.slice(1));
+
+      try {
+        const response = await userMoviesAPI.add(movie.id, rating, true);
+
+        updateStats(rating, 1);
+
+        // Add to undo history
+        const swipeAction: SwipeAction = {
+          movie,
+          action: rating,
+          apiRecordId: response.data.id,
+          timestamp: Date.now(),
+        };
+
+        setSwipeHistory((prev) => [swipeAction, ...prev].slice(0, MAX_UNDO_HISTORY));
+
+        // Trigger visual card removal
+        if ((window as any).__triggerSwipe) {
+          // Card already removed, skip visual swipe
+        }
+      } catch (err: any) {
+        console.error('Failed to rate movie:', err);
+
+        // Rollback
+        setCardStack((prev) => [movie, ...prev]);
+
+        if (err.response?.status === 400) {
+          setCardStack((prev) => prev.filter((m) => m.id !== movie.id));
+        } else {
+          setError('Failed to save. Please try again.');
+        }
+      } finally {
+        setIsProcessing(false);
+      }
+    },
+    [cardStack, isProcessing, updateStats]
+  );
+
+  // Undo last swipe
+  const undo = useCallback(async () => {
+    if (swipeHistory.length === 0 || isProcessing) return;
+
+    const lastAction = swipeHistory[0];
+    setIsProcessing(true);
+
+    try {
+      // Delete the API record
+      if (lastAction.apiRecordId) {
+        if (lastAction.action === 'WATCHLIST') {
+          await watchlistAPI.remove(lastAction.apiRecordId);
+        } else {
+          await userMoviesAPI.delete(lastAction.apiRecordId);
+        }
+      }
+
+      // Restore card to stack
+      setCardStack((prev) => [lastAction.movie, ...prev]);
+
+      // Update stats (decrement)
+      updateStats(lastAction.action, -1);
+
+      // Remove from history
+      setSwipeHistory((prev) => prev.slice(1));
+    } catch (err) {
+      console.error('Failed to undo:', err);
+      setError('Failed to undo. Please try again.');
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [swipeHistory, isProcessing, updateStats]);
+
+  // Load more recommendations manually
+  const loadMore = useCallback(async () => {
+    if (isLoading || isPrefetching) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const newMovies = await loadRecommendations(INITIAL_LOAD_COUNT);
+      setCardStack((prev) => [...prev, ...newMovies]);
+      setSeenIds((prev) => {
+        const updated = new Set(prev);
+        newMovies.forEach((m) => updated.add(m.id));
+        return updated;
+      });
+    } catch (err) {
+      setError('Failed to load more movies.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isLoading, isPrefetching, loadRecommendations]);
+
+  // Reset session
+  const reset = useCallback(() => {
+    setCardStack([]);
+    setSwipeHistory([]);
+    setStats(initialStats);
+    setSeenIds(new Set());
+    setError(null);
+  }, []);
+
+  return {
+    cards: cardStack,
+    currentCard: cardStack[0] || null,
+    isLoading,
+    isPrefetching,
+    isProcessing,
+    stats,
+    error,
+    canUndo: swipeHistory.length > 0,
+    swipe,
+    rateWithButton,
+    undo,
+    loadMore,
+    reset,
+  };
+};
