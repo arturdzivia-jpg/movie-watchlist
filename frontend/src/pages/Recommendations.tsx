@@ -350,39 +350,39 @@ const Recommendations: React.FC = () => {
   return (
     <div className="relative">
       {/* Header with view toggle */}
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold text-white">Discover Movies</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-white">Discover Movies</h1>
 
         {/* View mode toggle */}
-        <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
+        <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700 self-start sm:self-auto">
           <button
             onClick={() => setViewMode('grid')}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            className={`px-3 sm:px-4 py-2 rounded-md text-sm font-medium transition-colors min-h-[44px] flex items-center justify-center ${
               viewMode === 'grid'
                 ? 'bg-blue-600 text-white'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
             <span className="flex items-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
               </svg>
-              Grid
+              <span>Grid</span>
             </span>
           </button>
           <button
             onClick={() => setViewMode('swipe')}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            className={`px-3 sm:px-4 py-2 rounded-md text-sm font-medium transition-colors min-h-[44px] flex items-center justify-center ${
               viewMode === 'swipe'
                 ? 'bg-blue-600 text-white'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
             <span className="flex items-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
               </svg>
-              Swipe
+              <span>Swipe</span>
             </span>
           </button>
         </div>
@@ -399,31 +399,31 @@ const Recommendations: React.FC = () => {
             onStyleChange={(style) => setFilters(f => ({ ...f, style }))}
           />
 
-          <div className="bg-slate-800 rounded-lg p-6 mb-6 border border-slate-700">
-            <form onSubmit={handleSearch} className="flex gap-4">
+          <div className="bg-slate-800 rounded-lg p-4 sm:p-6 mb-6 border border-slate-700">
+            <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3 sm:gap-4">
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search for movies..."
-                className="flex-1 bg-slate-700 text-white px-4 py-3 rounded-lg border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex-1 bg-slate-700 text-white px-4 py-3 rounded-lg border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px]"
               />
               <button
                 type="submit"
                 disabled={isSearching || !searchQuery.trim()}
-                className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors disabled:bg-blue-800 disabled:cursor-not-allowed"
+                className="w-full sm:w-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors disabled:bg-blue-800 disabled:cursor-not-allowed min-h-[48px]"
               >
                 {isSearching ? 'Searching...' : 'Search'}
               </button>
             </form>
           </div>
 
-          <div className="flex space-x-1 mb-6 border-b border-slate-700 overflow-x-auto">
+          <div className="flex space-x-1 mb-6 border-b border-slate-700 overflow-x-auto scrollbar-hide">
             {CATEGORY_TABS.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => handleCategoryChange(tab.id)}
-                className={`px-4 py-2 font-medium transition-colors whitespace-nowrap ${
+                className={`px-3 sm:px-4 py-2 font-medium transition-colors whitespace-nowrap flex-shrink-0 min-h-[44px] ${
                   activeTab === 'category' && category === tab.id
                     ? 'text-blue-400 border-b-2 border-blue-400'
                     : 'text-slate-400 hover:text-slate-300'
@@ -435,7 +435,7 @@ const Recommendations: React.FC = () => {
             {searchResults.length > 0 && (
               <button
                 onClick={() => setActiveTab('search')}
-                className={`px-4 py-2 font-medium transition-colors whitespace-nowrap ${
+                className={`px-3 sm:px-4 py-2 font-medium transition-colors whitespace-nowrap flex-shrink-0 min-h-[44px] ${
                   activeTab === 'search'
                     ? 'text-blue-400 border-b-2 border-blue-400'
                     : 'text-slate-400 hover:text-slate-300'
@@ -551,24 +551,24 @@ const Recommendations: React.FC = () => {
           </div>
 
           {/* Session stats */}
-          <div className="flex gap-3 mb-6 text-sm flex-wrap justify-center">
-            <div className="bg-blue-900/30 text-blue-400 px-3 py-1 rounded-full">
-              <span aria-hidden="true">&#128278; </span>{swipeDiscover.stats.wantToWatch} Want to Watch
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-3 mb-6 text-xs sm:text-sm justify-center w-full max-w-md">
+            <div className="bg-blue-900/30 text-blue-400 px-2 sm:px-3 py-1.5 sm:py-1 rounded-full text-center">
+              <span aria-hidden="true">&#128278; </span>{swipeDiscover.stats.wantToWatch} <span className="hidden sm:inline">Want to </span>Watch
             </div>
-            <div className="bg-slate-700/50 text-slate-400 px-3 py-1 rounded-full">
-              <span aria-hidden="true">&#10060; </span>{swipeDiscover.stats.notInterested} Not Interested
+            <div className="bg-slate-700/50 text-slate-400 px-2 sm:px-3 py-1.5 sm:py-1 rounded-full text-center">
+              <span aria-hidden="true">&#10060; </span>{swipeDiscover.stats.notInterested} <span className="hidden sm:inline">Not </span>Skip<span className="hidden sm:inline">ped</span>
             </div>
-            <div className="bg-purple-900/30 text-purple-400 px-3 py-1 rounded-full">
+            <div className="bg-purple-900/30 text-purple-400 px-2 sm:px-3 py-1.5 sm:py-1 rounded-full text-center">
               <span aria-hidden="true">&#127916; </span>{swipeDiscover.stats.alreadyWatched} Rated
             </div>
-            <div className="bg-slate-700/50 text-slate-400 px-3 py-1 rounded-full">
+            <div className="bg-slate-700/50 text-slate-400 px-2 sm:px-3 py-1.5 sm:py-1 rounded-full text-center">
               <span aria-hidden="true">&#8594; </span>{swipeDiscover.stats.skipped} Skipped
             </div>
           </div>
 
           {/* Loading state */}
           {swipeDiscover.isLoading && (
-            <div className="flex justify-center items-center h-[500px]">
+            <div className="flex justify-center items-center h-[65vh] sm:h-[70vh] max-h-[500px]">
               <div className="text-white text-xl">Loading movies...</div>
             </div>
           )}
@@ -626,9 +626,9 @@ const Recommendations: React.FC = () => {
               />
 
               {/* Swipe hints */}
-              <div className="text-slate-500 text-xs text-center mt-2 space-y-1">
+              <div className="text-slate-500 text-xs text-center mt-2 space-y-1 px-4">
                 <p>Swipe right to add to watchlist, left if not interested, down to skip</p>
-                <p>Keyboard: Arrow keys (Left/Right/Down), Ctrl+Z to undo</p>
+                <p className="hidden sm:block">Keyboard: Arrow keys (Left/Right/Down), Ctrl+Z to undo</p>
               </div>
 
               {/* Rating Modal */}
@@ -653,7 +653,7 @@ const Recommendations: React.FC = () => {
 
       {/* Toast notification */}
       <div
-        className={`fixed bottom-8 left-1/2 -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg transition-all duration-300 ${
+        className={`fixed bottom-20 sm:bottom-8 left-1/2 -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg transition-all duration-300 z-50 ${
           toast.visible
             ? 'opacity-100 translate-y-0'
             : 'opacity-0 translate-y-4 pointer-events-none'

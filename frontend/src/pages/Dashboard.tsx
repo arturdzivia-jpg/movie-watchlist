@@ -69,7 +69,7 @@ const Dashboard: React.FC = () => {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold text-white mb-8">Dashboard</h1>
+      <h1 className="text-2xl sm:text-3xl font-bold text-white mb-6 sm:mb-8">Dashboard</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         <Link
@@ -116,67 +116,67 @@ const Dashboard: React.FC = () => {
         <h2 className="text-xl font-bold text-white mb-4">Rating Distribution</h2>
 
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div className="flex items-center space-x-3">
-              <span className="text-2xl">❤️</span>
+              <span className="text-2xl" aria-hidden="true">❤️</span>
               <span className="text-slate-300">Super Like</span>
             </div>
-            <div className="flex items-center space-x-4">
-              <div className="w-64 bg-slate-700 rounded-full h-4">
+            <div className="flex items-center space-x-3 sm:space-x-4">
+              <div className="flex-1 sm:flex-none sm:w-48 md:w-64 bg-slate-700 rounded-full h-4">
                 <div
                   className="bg-red-500 h-4 rounded-full transition-all"
                   style={{ width: `${stats.totalMovies ? (stats.superLikes / stats.totalMovies) * 100 : 0}%` }}
                 />
               </div>
-              <span className="text-white font-semibold w-12 text-right">{stats.superLikes}</span>
+              <span className="text-white font-semibold w-10 sm:w-12 text-right">{stats.superLikes}</span>
             </div>
           </div>
 
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div className="flex items-center space-x-3">
-              <span className="text-2xl">👍</span>
+              <span className="text-2xl" aria-hidden="true">👍</span>
               <span className="text-slate-300">Like</span>
             </div>
-            <div className="flex items-center space-x-4">
-              <div className="w-64 bg-slate-700 rounded-full h-4">
+            <div className="flex items-center space-x-3 sm:space-x-4">
+              <div className="flex-1 sm:flex-none sm:w-48 md:w-64 bg-slate-700 rounded-full h-4">
                 <div
                   className="bg-green-500 h-4 rounded-full transition-all"
                   style={{ width: `${stats.totalMovies ? (stats.likes / stats.totalMovies) * 100 : 0}%` }}
                 />
               </div>
-              <span className="text-white font-semibold w-12 text-right">{stats.likes}</span>
+              <span className="text-white font-semibold w-10 sm:w-12 text-right">{stats.likes}</span>
             </div>
           </div>
 
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div className="flex items-center space-x-3">
-              <span className="text-2xl">😐</span>
+              <span className="text-2xl" aria-hidden="true">😐</span>
               <span className="text-slate-300">OK</span>
             </div>
-            <div className="flex items-center space-x-4">
-              <div className="w-64 bg-slate-700 rounded-full h-4">
+            <div className="flex items-center space-x-3 sm:space-x-4">
+              <div className="flex-1 sm:flex-none sm:w-48 md:w-64 bg-slate-700 rounded-full h-4">
                 <div
                   className="bg-yellow-500 h-4 rounded-full transition-all"
                   style={{ width: `${stats.totalMovies ? (stats.ok / stats.totalMovies) * 100 : 0}%` }}
                 />
               </div>
-              <span className="text-white font-semibold w-12 text-right">{stats.ok}</span>
+              <span className="text-white font-semibold w-10 sm:w-12 text-right">{stats.ok}</span>
             </div>
           </div>
 
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div className="flex items-center space-x-3">
-              <span className="text-2xl">👎</span>
+              <span className="text-2xl" aria-hidden="true">👎</span>
               <span className="text-slate-300">Dislike</span>
             </div>
-            <div className="flex items-center space-x-4">
-              <div className="w-64 bg-slate-700 rounded-full h-4">
+            <div className="flex items-center space-x-3 sm:space-x-4">
+              <div className="flex-1 sm:flex-none sm:w-48 md:w-64 bg-slate-700 rounded-full h-4">
                 <div
                   className="bg-gray-500 h-4 rounded-full transition-all"
                   style={{ width: `${stats.totalMovies ? (stats.dislikes / stats.totalMovies) * 100 : 0}%` }}
                 />
               </div>
-              <span className="text-white font-semibold w-12 text-right">{stats.dislikes}</span>
+              <span className="text-white font-semibold w-10 sm:w-12 text-right">{stats.dislikes}</span>
             </div>
           </div>
         </div>

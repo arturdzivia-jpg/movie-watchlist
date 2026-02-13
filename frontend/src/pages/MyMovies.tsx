@@ -158,37 +158,37 @@ const MyMovies: React.FC = () => {
           <p className="text-red-400">{error}</p>
         </div>
       )}
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-white">My Movies</h1>
-        <div className="flex items-center gap-4">
-          <div className="text-slate-400">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-white">My Movies</h1>
+        <div className="flex items-center justify-between sm:justify-end gap-4">
+          <div className="text-slate-400 text-sm sm:text-base">
             {filteredMovies.length} {filteredMovies.length === 1 ? 'movie' : 'movies'}
           </div>
           {/* View mode toggle */}
           <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
             <button
               onClick={() => setViewMode('list')}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+              className={`px-3 py-2 sm:py-1.5 rounded-md text-sm font-medium transition-colors min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center ${
                 viewMode === 'list'
                   ? 'bg-blue-600 text-white'
                   : 'text-slate-400 hover:text-white'
               }`}
               aria-label="List view"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
             <button
               onClick={() => setViewMode('grid')}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+              className={`px-3 py-2 sm:py-1.5 rounded-md text-sm font-medium transition-colors min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center ${
                 viewMode === 'grid'
                   ? 'bg-blue-600 text-white'
                   : 'text-slate-400 hover:text-white'
               }`}
               aria-label="Grid view"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
               </svg>
             </button>
@@ -210,33 +210,35 @@ const MyMovies: React.FC = () => {
         </div>
       ) : (
         <>
-          <div className="flex flex-wrap gap-4 mb-6 bg-slate-800 p-4 rounded-lg border border-slate-700">
-            <div className="flex items-center space-x-2">
-              <label className="text-slate-300 text-sm font-medium">Filter:</label>
-              <select
-                value={filterRating}
-                onChange={(e) => setFilterRating(e.target.value as Rating | 'ALL')}
-                className="bg-slate-700 text-white px-3 py-2 rounded border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="ALL">All Ratings</option>
-                <option value="SUPER_LIKE">❤️ Love</option>
-                <option value="LIKE">👍 Like</option>
-                <option value="OK">😐 OK</option>
-                <option value="DISLIKE">👎 Dislike</option>
-              </select>
-            </div>
+          <div className="bg-slate-800 p-4 rounded-lg border border-slate-700 mb-6">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex items-center gap-2 flex-1 sm:flex-none">
+                <label className="text-slate-300 text-sm font-medium whitespace-nowrap">Filter:</label>
+                <select
+                  value={filterRating}
+                  onChange={(e) => setFilterRating(e.target.value as Rating | 'ALL')}
+                  className="flex-1 sm:flex-none sm:w-40 bg-slate-700 text-white px-3 py-2 rounded border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px]"
+                >
+                  <option value="ALL">All Ratings</option>
+                  <option value="SUPER_LIKE">❤️ Love</option>
+                  <option value="LIKE">👍 Like</option>
+                  <option value="OK">😐 OK</option>
+                  <option value="DISLIKE">👎 Dislike</option>
+                </select>
+              </div>
 
-            <div className="flex items-center space-x-2">
-              <label className="text-slate-300 text-sm font-medium">Sort by:</label>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as 'date' | 'title' | 'rating')}
-                className="bg-slate-700 text-white px-3 py-2 rounded border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="date">Date Added</option>
-                <option value="title">Title</option>
-                <option value="rating">Rating</option>
-              </select>
+              <div className="flex items-center gap-2 flex-1 sm:flex-none">
+                <label className="text-slate-300 text-sm font-medium whitespace-nowrap">Sort by:</label>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as 'date' | 'title' | 'rating')}
+                  className="flex-1 sm:flex-none sm:w-40 bg-slate-700 text-white px-3 py-2 rounded border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px]"
+                >
+                  <option value="date">Date Added</option>
+                  <option value="title">Title</option>
+                  <option value="rating">Rating</option>
+                </select>
+              </div>
             </div>
           </div>
 

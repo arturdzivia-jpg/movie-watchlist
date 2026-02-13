@@ -113,8 +113,8 @@ const Watchlist: React.FC = () => {
         </div>
       )}
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-white">Watchlist</h1>
-        <div className="text-slate-400">
+        <h1 className="text-2xl sm:text-3xl font-bold text-white">Watchlist</h1>
+        <div className="text-slate-400 text-sm sm:text-base">
           {watchlist.length} {watchlist.length === 1 ? 'movie' : 'movies'}
         </div>
       </div>
@@ -144,7 +144,7 @@ const Watchlist: React.FC = () => {
               <div key={item.id} className="bg-slate-800 rounded-lg overflow-hidden shadow-lg border border-slate-700 hover:border-slate-600 transition-colors">
                 <div className="flex">
                   <div
-                    className="w-32 flex-shrink-0 bg-slate-700 cursor-pointer"
+                    className="w-24 sm:w-32 flex-shrink-0 bg-slate-700 cursor-pointer"
                     onClick={() => setSelectedItem(item)}
                   >
                     <img
@@ -188,46 +188,48 @@ const Watchlist: React.FC = () => {
                       </div>
                     )}
 
-                    <div className="flex items-center space-x-2">
-                      <p className="text-slate-400 text-sm mr-2">Mark as watched:</p>
-                      <button
-                        onClick={() => handleMarkWatched(item.id, 'DISLIKE')}
-                        disabled={markingWatched === item.id}
-                        aria-label={`Mark ${movie.title} as watched with Dislike rating`}
-                        className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded text-sm transition-colors disabled:opacity-50"
-                      >
-                        <span aria-hidden="true">👎</span>
-                      </button>
-                      <button
-                        onClick={() => handleMarkWatched(item.id, 'OK')}
-                        disabled={markingWatched === item.id}
-                        aria-label={`Mark ${movie.title} as watched with OK rating`}
-                        className="bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1 rounded text-sm transition-colors disabled:opacity-50"
-                      >
-                        <span aria-hidden="true">😐</span>
-                      </button>
-                      <button
-                        onClick={() => handleMarkWatched(item.id, 'LIKE')}
-                        disabled={markingWatched === item.id}
-                        aria-label={`Mark ${movie.title} as watched with Like rating`}
-                        className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm transition-colors disabled:opacity-50"
-                      >
-                        <span aria-hidden="true">👍</span>
-                      </button>
-                      <button
-                        onClick={() => handleMarkWatched(item.id, 'SUPER_LIKE')}
-                        disabled={markingWatched === item.id}
-                        aria-label={`Mark ${movie.title} as watched with Love rating`}
-                        className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm transition-colors disabled:opacity-50"
-                      >
-                        <span aria-hidden="true">❤️</span>
-                      </button>
-                      <div className="flex-1"></div>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-2">
+                      <p className="text-slate-400 text-sm">Mark as watched:</p>
+                      <div className="grid grid-cols-4 gap-2 sm:flex sm:gap-2">
+                        <button
+                          onClick={() => handleMarkWatched(item.id, 'DISLIKE')}
+                          disabled={markingWatched === item.id}
+                          aria-label={`Mark ${movie.title} as watched with Dislike rating`}
+                          className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 sm:py-1 rounded text-sm transition-colors disabled:opacity-50 min-h-[44px] sm:min-h-0 flex items-center justify-center"
+                        >
+                          <span aria-hidden="true">👎</span>
+                        </button>
+                        <button
+                          onClick={() => handleMarkWatched(item.id, 'OK')}
+                          disabled={markingWatched === item.id}
+                          aria-label={`Mark ${movie.title} as watched with OK rating`}
+                          className="bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-2 sm:py-1 rounded text-sm transition-colors disabled:opacity-50 min-h-[44px] sm:min-h-0 flex items-center justify-center"
+                        >
+                          <span aria-hidden="true">😐</span>
+                        </button>
+                        <button
+                          onClick={() => handleMarkWatched(item.id, 'LIKE')}
+                          disabled={markingWatched === item.id}
+                          aria-label={`Mark ${movie.title} as watched with Like rating`}
+                          className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 sm:py-1 rounded text-sm transition-colors disabled:opacity-50 min-h-[44px] sm:min-h-0 flex items-center justify-center"
+                        >
+                          <span aria-hidden="true">👍</span>
+                        </button>
+                        <button
+                          onClick={() => handleMarkWatched(item.id, 'SUPER_LIKE')}
+                          disabled={markingWatched === item.id}
+                          aria-label={`Mark ${movie.title} as watched with Love rating`}
+                          className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 sm:py-1 rounded text-sm transition-colors disabled:opacity-50 min-h-[44px] sm:min-h-0 flex items-center justify-center"
+                        >
+                          <span aria-hidden="true">❤️</span>
+                        </button>
+                      </div>
+                      <div className="hidden sm:block flex-1"></div>
                       <button
                         onClick={() => handleRemove(item.id)}
                         disabled={markingWatched === item.id}
                         aria-label={`Remove ${movie.title} from watchlist`}
-                        className="bg-red-600/20 hover:bg-red-600/30 text-red-400 px-3 py-1 rounded text-sm transition-colors border border-red-600/50 disabled:opacity-50"
+                        className="w-full sm:w-auto bg-red-600/20 hover:bg-red-600/30 text-red-400 px-3 py-2 sm:py-1 rounded text-sm transition-colors border border-red-600/50 disabled:opacity-50 min-h-[44px] sm:min-h-0"
                       >
                         Remove
                       </button>

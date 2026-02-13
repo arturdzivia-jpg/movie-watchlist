@@ -37,7 +37,7 @@ const UserMovieCard: React.FC<UserMovieCardProps> = ({ userMovie, onUpdateRating
   return (
     <div className="bg-slate-800 rounded-lg overflow-hidden shadow-lg border border-slate-700">
       <div className="flex">
-        <div className="w-32 flex-shrink-0 bg-slate-700">
+        <div className="w-24 sm:w-32 flex-shrink-0 bg-slate-700">
           <img
             src={posterUrl}
             alt={`Movie poster for ${movie.title}`}
@@ -48,14 +48,14 @@ const UserMovieCard: React.FC<UserMovieCardProps> = ({ userMovie, onUpdateRating
           />
         </div>
 
-        <div className="flex-1 p-4">
-          <div className="flex justify-between items-start mb-2">
-            <div>
-              <h3 className="text-white font-semibold text-lg">{movie.title}</h3>
+        <div className="flex-1 p-3 sm:p-4">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 mb-2">
+            <div className="min-w-0">
+              <h3 className="text-white font-semibold text-base sm:text-lg truncate">{movie.title}</h3>
               <p className="text-slate-400 text-sm">{year}</p>
             </div>
-            <div className={`${currentRating.color} text-white px-3 py-1 rounded-full text-sm font-medium flex items-center space-x-1`}>
-              <span>{currentRating.emoji}</span>
+            <div className={`${currentRating.color} text-white px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium flex items-center space-x-1 self-start flex-shrink-0`}>
+              <span aria-hidden="true">{currentRating.emoji}</span>
               <span>{currentRating.label}</span>
             </div>
           </div>
@@ -74,7 +74,7 @@ const UserMovieCard: React.FC<UserMovieCardProps> = ({ userMovie, onUpdateRating
             </div>
           )}
 
-          <div className="flex items-center space-x-2">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
             <label htmlFor={`rating-${userMovie.id}`} className="sr-only">
               Change rating for {movie.title}
             </label>
@@ -83,7 +83,7 @@ const UserMovieCard: React.FC<UserMovieCardProps> = ({ userMovie, onUpdateRating
               value={rating}
               onChange={(e) => onUpdateRating?.(userMovie.id, e.target.value as Rating)}
               aria-label={`Change rating for ${movie.title}`}
-              className="bg-slate-700 text-white px-3 py-1 rounded text-sm border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full sm:w-auto bg-slate-700 text-white px-3 py-2 sm:py-1 rounded text-sm border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px] sm:min-h-0"
             >
               {allRatings.map((r) => (
                 <option key={r} value={r}>
@@ -96,7 +96,7 @@ const UserMovieCard: React.FC<UserMovieCardProps> = ({ userMovie, onUpdateRating
               <button
                 onClick={() => onDelete(userMovie.id)}
                 aria-label={`Remove ${movie.title} from your list`}
-                className="bg-red-600/20 hover:bg-red-600/30 text-red-400 px-3 py-1 rounded text-sm transition-colors border border-red-600/50"
+                className="w-full sm:w-auto bg-red-600/20 hover:bg-red-600/30 text-red-400 px-3 py-2 sm:py-1 rounded text-sm transition-colors border border-red-600/50 min-h-[44px] sm:min-h-0"
               >
                 Remove
               </button>

@@ -18,18 +18,18 @@ const SwipeControls: React.FC<SwipeControlsProps> = ({
   const buttonBase = 'flex items-center justify-center rounded-full transition-all transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed';
 
   return (
-    <div className="flex items-center justify-center gap-4 py-4">
+    <div className="flex items-center justify-center gap-5 sm:gap-4 py-4">
       {/* Undo */}
       <button
         onClick={onUndo}
         disabled={!canUndo || isProcessing}
-        className={`${buttonBase} w-12 h-12 bg-slate-700 hover:bg-slate-600 text-yellow-400 border border-slate-600`}
+        className={`${buttonBase} w-14 h-14 sm:w-12 sm:h-12 bg-slate-700 hover:bg-slate-600 text-yellow-400 border border-slate-600`}
         aria-label="Undo last action"
         title="Undo"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          className="h-5 w-5"
+          className="h-6 w-6 sm:h-5 sm:w-5"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -47,7 +47,7 @@ const SwipeControls: React.FC<SwipeControlsProps> = ({
       <button
         onClick={onAlreadyWatched}
         disabled={isProcessing}
-        className={`${buttonBase} px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white font-medium text-sm border border-purple-500`}
+        className={`${buttonBase} px-5 sm:px-6 py-3 min-h-[48px] bg-purple-600 hover:bg-purple-500 text-white font-medium text-sm border border-purple-500`}
         aria-label="Mark as already watched and rate"
         title="Already Watched"
       >
@@ -71,20 +71,21 @@ const SwipeControls: React.FC<SwipeControlsProps> = ({
             d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
           />
         </svg>
-        Already Watched
+        <span className="hidden sm:inline">Already Watched</span>
+        <span className="sm:hidden">Watched</span>
       </button>
 
       {/* Skip */}
       <button
         onClick={onSkip}
         disabled={isProcessing}
-        className={`${buttonBase} w-12 h-12 bg-slate-700 hover:bg-slate-500 text-slate-400 hover:text-white border border-slate-600`}
+        className={`${buttonBase} w-14 h-14 sm:w-12 sm:h-12 bg-slate-700 hover:bg-slate-500 text-slate-400 hover:text-white border border-slate-600`}
         aria-label="Skip movie"
         title="Skip"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          className="h-5 w-5"
+          className="h-6 w-6 sm:h-5 sm:w-5"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"

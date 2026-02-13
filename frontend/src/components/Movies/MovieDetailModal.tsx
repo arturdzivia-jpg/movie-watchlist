@@ -118,7 +118,7 @@ const MovieDetailModal: React.FC<MovieDetailModalProps> = ({
   const genres = fullDetails?.genres || (!isTMDBMovie(movie) ? movie.genres : null);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/80 backdrop-blur-sm"
@@ -128,7 +128,7 @@ const MovieDetailModal: React.FC<MovieDetailModalProps> = ({
 
       {/* Modal */}
       <div
-        className="relative bg-slate-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden border border-slate-700 shadow-2xl"
+        className="relative bg-slate-800 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-2xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden border border-slate-700 shadow-2xl"
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
@@ -136,7 +136,7 @@ const MovieDetailModal: React.FC<MovieDetailModalProps> = ({
         {/* Close button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 z-10 bg-black/50 hover:bg-black/70 text-white w-10 h-10 rounded-full flex items-center justify-center transition-colors"
+          className="absolute top-3 right-3 sm:top-4 sm:right-4 z-10 bg-black/50 hover:bg-black/70 text-white w-11 h-11 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-colors"
           aria-label="Close modal"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -167,8 +167,8 @@ const MovieDetailModal: React.FC<MovieDetailModalProps> = ({
             </div>
 
             {/* Info */}
-            <div className="p-6 flex-1">
-              <h2 id="modal-title" className="text-2xl font-bold text-white mb-2">{title}</h2>
+            <div className="p-4 sm:p-6 flex-1">
+              <h2 id="modal-title" className="text-xl sm:text-2xl font-bold text-white mb-2 pr-8 sm:pr-0">{title}</h2>
 
               {/* Meta info */}
               <div className="flex flex-wrap items-center gap-3 text-slate-400 mb-4">
@@ -220,13 +220,13 @@ const MovieDetailModal: React.FC<MovieDetailModalProps> = ({
           </div>
 
           {/* Overview */}
-          <div className="px-6 pb-4">
+          <div className="px-4 sm:px-6 pb-4">
             <h3 className="text-lg font-semibold text-white mb-2">Overview</h3>
-            <p className="text-slate-300 leading-relaxed">{overview}</p>
+            <p className="text-slate-300 leading-relaxed text-sm sm:text-base">{overview}</p>
           </div>
 
           {/* Actions */}
-          <div className="px-6 pb-6 border-t border-slate-700 pt-4">
+          <div className="px-4 sm:px-6 pb-6 border-t border-slate-700 pt-4">
             {/* User has already rated this movie */}
             {userRating && userRating !== 'NOT_INTERESTED' ? (
               <div className="space-y-4">
@@ -261,13 +261,13 @@ const MovieDetailModal: React.FC<MovieDetailModalProps> = ({
               /* In watchlist - show rating buttons to mark as watched */
               <div className="space-y-4">
                 <p className="text-slate-400 text-sm">In your watchlist - rate to mark as watched:</p>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {ratingButtons.map(btn => (
                     <button
                       key={btn.rating}
                       onClick={() => onRate?.(btn.rating)}
                       disabled={isProcessing}
-                      className={`${btn.color} text-white px-3 py-3 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex flex-col items-center gap-1`}
+                      className={`${btn.color} text-white px-3 py-3 sm:py-3 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex flex-col items-center gap-1 min-h-[56px] sm:min-h-[48px]`}
                     >
                       <span className="text-lg">{btn.emoji}</span>
                       <span>{btn.label}</span>
@@ -288,13 +288,13 @@ const MovieDetailModal: React.FC<MovieDetailModalProps> = ({
               /* Not rated, not in watchlist - show all options */
               <div className="space-y-4">
                 <p className="text-slate-400 text-sm">Rate this movie:</p>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {ratingButtons.map(btn => (
                     <button
                       key={btn.rating}
                       onClick={() => onRate?.(btn.rating)}
                       disabled={isProcessing}
-                      className={`${btn.color} text-white px-3 py-3 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex flex-col items-center gap-1`}
+                      className={`${btn.color} text-white px-3 py-3 sm:py-3 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex flex-col items-center gap-1 min-h-[56px] sm:min-h-[48px]`}
                     >
                       <span className="text-lg">{btn.emoji}</span>
                       <span>{btn.label}</span>

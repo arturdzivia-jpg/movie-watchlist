@@ -190,7 +190,7 @@ const SwipeCardStack: React.FC<SwipeCardStackProps> = ({
   const overlay = getOverlay();
 
   return (
-    <div className="relative w-full max-w-sm mx-auto" style={{ height: '500px' }}>
+    <div className="relative w-full max-w-sm mx-auto h-[65vh] sm:h-[70vh] max-h-[500px] min-h-[380px]">
       {visibleCards.map((movie, index) => {
         const isTopCard = index === 0;
         const stackOffset = index * 4;
@@ -221,7 +221,7 @@ const SwipeCardStack: React.FC<SwipeCardStackProps> = ({
               transform,
               transition,
               transformOrigin: 'bottom center',
-              height: '500px',
+              height: '100%',
               cursor: isTopCard ? 'grab' : 'default',
             }}
             onMouseDown={isTopCard ? handleMouseDown : undefined}
