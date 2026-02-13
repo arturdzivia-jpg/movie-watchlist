@@ -187,7 +187,6 @@ const Recommendations: React.FC = () => {
   const handleAddToWatchlist = async (tmdbId: number) => {
     try {
       await watchlistAPI.add(tmdbId);
-      alert('Movie added to watchlist!');
       removeMovieFromCaches(tmdbId);
     } catch (error: any) {
       console.error('Failed to add to watchlist:', error);
