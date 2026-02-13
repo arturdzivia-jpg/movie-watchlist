@@ -551,22 +551,6 @@ const Recommendations: React.FC = () => {
             />
           </div>
 
-          {/* Session stats */}
-          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-3 mb-6 text-xs sm:text-sm justify-center w-full max-w-md">
-            <div className="bg-blue-900/30 text-blue-400 px-2 sm:px-3 py-1.5 sm:py-1 rounded-full text-center">
-              <span aria-hidden="true">&#128278; </span>{swipeDiscover.stats.wantToWatch} <span className="hidden sm:inline">Want to </span>Watch
-            </div>
-            <div className="bg-slate-700/50 text-slate-400 px-2 sm:px-3 py-1.5 sm:py-1 rounded-full text-center">
-              <span aria-hidden="true">&#10060; </span>{swipeDiscover.stats.notInterested} <span className="hidden sm:inline">Not </span>Skip<span className="hidden sm:inline">ped</span>
-            </div>
-            <div className="bg-purple-900/30 text-purple-400 px-2 sm:px-3 py-1.5 sm:py-1 rounded-full text-center">
-              <span aria-hidden="true">&#127916; </span>{swipeDiscover.stats.alreadyWatched} Rated
-            </div>
-            <div className="bg-slate-700/50 text-slate-400 px-2 sm:px-3 py-1.5 sm:py-1 rounded-full text-center">
-              <span aria-hidden="true">&#8594; </span>{swipeDiscover.stats.skipped} Skipped
-            </div>
-          </div>
-
           {/* Loading state */}
           {swipeDiscover.isLoading && (
             <div className="flex justify-center items-center h-[65vh] sm:h-[70vh] max-h-[500px]">
