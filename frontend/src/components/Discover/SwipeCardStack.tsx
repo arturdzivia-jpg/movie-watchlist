@@ -1,5 +1,4 @@
-import React, { useRef, useEffect, useCallback } from 'react';
-import TinderCard from 'react-tinder-card';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Recommendation } from '../../services/api';
 import { SwipeDirection } from '../../types/discover';
 import SwipeCard from './SwipeCard';
@@ -11,10 +10,8 @@ interface SwipeCardStackProps {
   isProcessing: boolean;
 }
 
-interface CardRef {
-  swipe: (dir: 'left' | 'right' | 'up' | 'down') => Promise<void>;
-  restoreCard: () => Promise<void>;
-}
+const SWIPE_THRESHOLD = 100;
+const SWIPE_OUT_DURATION = 300;
 
 const SwipeCardStack: React.FC<SwipeCardStackProps> = ({
   cards,
@@ -22,42 +19,133 @@ const SwipeCardStack: React.FC<SwipeCardStackProps> = ({
   onCardLeftScreen,
   isProcessing,
 }) => {
-  const cardRefs = useRef<Map<number, CardRef>>(new Map());
+  const [dragState, setDragState] = useState({
+    isDragging: false,
+    startX: 0,
+    startY: 0,
+    currentX: 0,
+    currentY: 0,
+  });
+  const [swipingOut, setSwipingOut] = useState<{ direction: SwipeDirection; movie: Recommendation } | null>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
 
   // Only show top 3 cards for performance
   const visibleCards = cards.slice(0, 3);
 
-  const handleSwipe = useCallback(
-    (direction: string, movie: Recommendation) => {
-      if (direction === 'left' || direction === 'right' || direction === 'up') {
-        onSwipe(direction as SwipeDirection, movie);
-      }
-    },
-    [onSwipe]
-  );
+  const handleDragStart = useCallback((clientX: number, clientY: number) => {
+    if (isProcessing || swipingOut) return;
+    setDragState({
+      isDragging: true,
+      startX: clientX,
+      startY: clientY,
+      currentX: 0,
+      currentY: 0,
+    });
+  }, [isProcessing, swipingOut]);
 
-  const handleCardLeftScreen = useCallback(
-    (movie: Recommendation) => {
-      onCardLeftScreen(movie);
-    },
-    [onCardLeftScreen]
-  );
+  const handleDragMove = useCallback((clientX: number, clientY: number) => {
+    if (!dragState.isDragging) return;
+    setDragState(prev => ({
+      ...prev,
+      currentX: clientX - prev.startX,
+      currentY: clientY - prev.startY,
+    }));
+  }, [dragState.isDragging]);
+
+  const handleDragEnd = useCallback(() => {
+    if (!dragState.isDragging || cards.length === 0) return;
+
+    const { currentX, currentY } = dragState;
+    let direction: SwipeDirection | null = null;
+
+    if (currentX > SWIPE_THRESHOLD) {
+      direction = 'right';
+    } else if (currentX < -SWIPE_THRESHOLD) {
+      direction = 'left';
+    } else if (currentY < -SWIPE_THRESHOLD) {
+      direction = 'up';
+    }
+
+    if (direction) {
+      const movie = cards[0];
+      setSwipingOut({ direction, movie });
+      onSwipe(direction, movie);
+
+      setTimeout(() => {
+        onCardLeftScreen(movie);
+        setSwipingOut(null);
+      }, SWIPE_OUT_DURATION);
+    }
+
+    setDragState({
+      isDragging: false,
+      startX: 0,
+      startY: 0,
+      currentX: 0,
+      currentY: 0,
+    });
+  }, [dragState, cards, onSwipe, onCardLeftScreen]);
+
+  // Mouse events
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    handleDragStart(e.clientX, e.clientY);
+  };
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    handleDragMove(e.clientX, e.clientY);
+  }, [handleDragMove]);
+
+  const handleMouseUp = useCallback(() => {
+    handleDragEnd();
+  }, [handleDragEnd]);
+
+  // Touch events
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    handleDragStart(touch.clientX, touch.clientY);
+  };
+
+  const handleTouchMove = useCallback((e: TouchEvent) => {
+    const touch = e.touches[0];
+    handleDragMove(touch.clientX, touch.clientY);
+  }, [handleDragMove]);
+
+  const handleTouchEnd = useCallback(() => {
+    handleDragEnd();
+  }, [handleDragEnd]);
+
+  // Global event listeners
+  useEffect(() => {
+    if (dragState.isDragging) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+      window.addEventListener('touchmove', handleTouchMove);
+      window.addEventListener('touchend', handleTouchEnd);
+    }
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [dragState.isDragging, handleMouseMove, handleMouseUp, handleTouchMove, handleTouchEnd]);
 
   // Programmatic swipe function for button controls
-  const triggerSwipe = useCallback(
-    async (direction: SwipeDirection) => {
-      if (cards.length === 0 || isProcessing) return;
+  const triggerSwipe = useCallback((direction: SwipeDirection) => {
+    if (cards.length === 0 || isProcessing || swipingOut) return;
 
-      const topCard = cards[0];
-      const cardRef = cardRefs.current.get(topCard.id);
-      if (cardRef) {
-        await cardRef.swipe(direction);
-      }
-    },
-    [cards, isProcessing]
-  );
+    const movie = cards[0];
+    setSwipingOut({ direction, movie });
+    onSwipe(direction, movie);
 
-  // Expose triggerSwipe to parent via callback
+    setTimeout(() => {
+      onCardLeftScreen(movie);
+      setSwipingOut(null);
+    }, SWIPE_OUT_DURATION);
+  }, [cards, isProcessing, swipingOut, onSwipe, onCardLeftScreen]);
+
+  // Expose triggerSwipe to parent via window
   useEffect(() => {
     (window as any).__triggerSwipe = triggerSwipe;
     return () => {
@@ -69,6 +157,37 @@ const SwipeCardStack: React.FC<SwipeCardStackProps> = ({
     return null;
   }
 
+  // Calculate swipe out transform
+  const getSwipeOutTransform = (direction: SwipeDirection) => {
+    switch (direction) {
+      case 'left':
+        return 'translateX(-150%) rotate(-30deg)';
+      case 'right':
+        return 'translateX(150%) rotate(30deg)';
+      case 'up':
+        return 'translateY(-150%) rotate(0deg)';
+      default:
+        return '';
+    }
+  };
+
+  // Determine overlay based on drag position
+  const getOverlay = () => {
+    const { currentX, currentY } = dragState;
+    if (Math.abs(currentX) > 30 || Math.abs(currentY) > 30) {
+      if (currentX > 50) {
+        return { text: 'LIKE', color: 'bg-green-500/40', textColor: 'text-green-500', borderColor: 'border-green-500' };
+      } else if (currentX < -50) {
+        return { text: 'NOPE', color: 'bg-red-500/40', textColor: 'text-red-500', borderColor: 'border-red-500' };
+      } else if (currentY < -50) {
+        return { text: 'WATCHLIST', color: 'bg-blue-500/40', textColor: 'text-blue-500', borderColor: 'border-blue-500' };
+      }
+    }
+    return null;
+  };
+
+  const overlay = getOverlay();
+
   return (
     <div className="relative w-full max-w-sm mx-auto" style={{ height: '500px' }}>
       {visibleCards.map((movie, index) => {
@@ -76,41 +195,47 @@ const SwipeCardStack: React.FC<SwipeCardStackProps> = ({
         const stackOffset = index * 4;
         const stackScale = 1 - index * 0.03;
 
+        const isSwipingOut = swipingOut?.movie.id === movie.id;
+
+        let transform = `translateY(${stackOffset}px) scale(${stackScale})`;
+        let transition = 'transform 0.1s ease-out';
+
+        if (isTopCard && !isSwipingOut) {
+          const rotation = dragState.currentX * 0.05;
+          transform = `translate(${dragState.currentX}px, ${dragState.currentY}px) rotate(${rotation}deg)`;
+        }
+
+        if (isSwipingOut && swipingOut) {
+          transform = getSwipeOutTransform(swipingOut.direction);
+          transition = `transform ${SWIPE_OUT_DURATION}ms ease-out`;
+        }
+
         return (
           <div
             key={movie.id}
-            className="absolute w-full"
+            ref={isTopCard ? cardRef : undefined}
+            className="absolute w-full touch-none select-none"
             style={{
               zIndex: visibleCards.length - index,
-              transform: `translateY(${stackOffset}px) scale(${stackScale})`,
+              transform,
+              transition,
               transformOrigin: 'bottom center',
               height: '500px',
+              cursor: isTopCard ? 'grab' : 'default',
             }}
+            onMouseDown={isTopCard ? handleMouseDown : undefined}
+            onTouchStart={isTopCard ? handleTouchStart : undefined}
           >
-            <TinderCard
-              ref={(ref: CardRef | null) => {
-                if (ref) {
-                  cardRefs.current.set(movie.id, ref);
-                } else {
-                  cardRefs.current.delete(movie.id);
-                }
-              }}
-              onSwipe={(dir) => handleSwipe(dir, movie)}
-              onCardLeftScreen={() => handleCardLeftScreen(movie)}
-              preventSwipe={isProcessing ? ['left', 'right', 'up', 'down'] : ['down']}
-              swipeRequirementType="position"
-              swipeThreshold={100}
-              className="w-full h-full"
-            >
-              <div className="relative w-full h-full">
-                <SwipeCard movie={movie} />
-                {isTopCard && (
-                  <div className="absolute inset-0 pointer-events-none">
-                    {/* Swipe overlay will be shown via CSS on swipe */}
-                  </div>
-                )}
+            <SwipeCard movie={movie} />
+
+            {/* Swipe overlay */}
+            {isTopCard && overlay && (
+              <div className={`absolute inset-0 rounded-2xl ${overlay.color} pointer-events-none flex items-center justify-center`}>
+                <div className={`${overlay.textColor} ${overlay.borderColor} border-4 rounded-lg px-6 py-3 font-bold text-3xl transform -rotate-12`}>
+                  {overlay.text}
+                </div>
               </div>
-            </TinderCard>
+            )}
           </div>
         );
       })}
