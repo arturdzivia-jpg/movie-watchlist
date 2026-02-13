@@ -201,14 +201,20 @@ const SwipeCardStack: React.FC<SwipeCardStackProps> = ({
         let transform = `translateY(${stackOffset}px) scale(${stackScale})`;
         let transition = 'transform 0.1s ease-out';
 
-        if (isTopCard && !isSwipingOut) {
-          const rotation = dragState.currentX * 0.05;
-          transform = `translate(${dragState.currentX}px, ${dragState.currentY}px) rotate(${rotation}deg)`;
-        }
-
-        if (isSwipingOut && swipingOut) {
-          transform = getSwipeOutTransform(swipingOut.direction);
-          transition = `transform ${SWIPE_OUT_DURATION}ms ease-out`;
+        if (isTopCard) {
+          if (isSwipingOut && swipingOut) {
+            // Animate card flying out
+            transform = getSwipeOutTransform(swipingOut.direction);
+            transition = `transform ${SWIPE_OUT_DURATION}ms ease-out`;
+          } else if (dragState.isDragging) {
+            // Follow drag position
+            const rotation = dragState.currentX * 0.05;
+            transform = `translate(${dragState.currentX}px, ${dragState.currentY}px) rotate(${rotation}deg)`;
+            transition = 'none';
+          } else {
+            // Default position for top card
+            transform = 'translate(0, 0) rotate(0deg)';
+          }
         }
 
         return (
