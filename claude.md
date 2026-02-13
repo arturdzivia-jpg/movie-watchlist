@@ -40,7 +40,7 @@ A full-stack web application for managing movie watchlists with personalized rec
   - Multi-user support with data isolation
   - Content-based recommendation algorithm
   - Movie data caching (reduces API calls)
-  - Responsive dark-themed UI
+  - **Mobile-first responsive design** (works on phones, tablets, desktops)
   - Type-safe codebase (TypeScript throughout)
   - Rate limiting (100 req/15min general, 10 req/15min auth)
   - Security headers (Helmet.js)
@@ -883,9 +883,9 @@ For questions or issues:
 
 ---
 
-**Last Updated:** 2025-02-13
+**Last Updated:** 2025-02-14
 
-**Version:** 1.2.0
+**Version:** 1.3.0
 
 **Maintainers:** See [README.md](README.md)
 
@@ -914,7 +914,25 @@ The following features are already implemented in the codebase:
 - **Movie Caching:** 30-day cache reduces TMDB API calls
 
 ### UI Features
-- **Genre & Style Filtering:** Filter discover page by any TMDB genre and style (Movies, Anime, Cartoons)
+- **Genre & Style Filtering:** Filter discover page by any TMDB genre and style (Movies, Anime, Cartoons) - grid view only
+- **Genre Filtering in Swipe Mode:** Swipe view shows genre filter only (no style filter) for cleaner UI
 - **View Mode Toggle:** My Movies supports both list and grid views (persisted to localStorage)
 - **Movie Detail Modal:** Click any movie to see full details including cast, director, runtime
-- **Swipe Discovery:** Tinder-like card swiping for quick movie decisions with keyboard shortcuts
+- **Swipe Discovery:** Tinder-like card swiping with full-height poster cards, gradient overlay for text, and animated transitions for all actions (drag, buttons, keyboard)
+
+### Mobile-Responsive Design
+- **Hamburger Navigation:** Collapsible menu on mobile devices (< 768px)
+- **Touch-Friendly Buttons:** All interactive elements minimum 44x44px for accessibility
+- **Responsive Layouts:** Content stacks vertically on mobile, no horizontal scrolling
+- **Bottom Sheet Modal:** Movie detail modal slides up from bottom on mobile
+- **Adaptive Swipe Cards:** Viewport-based height (65-70vh) instead of fixed pixels
+- **Mobile-Optimized Forms:** Full-width inputs and buttons on small screens
+- **Hidden Scrollbars:** Clean horizontal scrolling for category tabs
+- **Safe Area Support:** CSS utilities for notched devices (iPhone X+)
+
+**Key responsive breakpoints:**
+- Mobile: < 640px (default styles)
+- Small: >= 640px (`sm:` prefix)
+- Medium: >= 768px (`md:` prefix)
+- Large: >= 1024px (`lg:` prefix)
+- XL: >= 1280px (`xl:` prefix)

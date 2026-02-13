@@ -6,15 +6,17 @@ interface FilterBarProps {
   selectedStyle: MovieStyle;
   onGenreChange: (genre: number | null) => void;
   onStyleChange: (style: MovieStyle) => void;
+  hideStyleFilter?: boolean;
 }
 
 const FilterBar: React.FC<FilterBarProps> = ({
   selectedGenre,
   selectedStyle,
   onGenreChange,
-  onStyleChange
+  onStyleChange,
+  hideStyleFilter = false
 }) => {
-  const hasActiveFilters = selectedGenre !== null || selectedStyle !== 'all';
+  const hasActiveFilters = selectedGenre !== null || (!hideStyleFilter && selectedStyle !== 'all');
 
   const clearFilters = () => {
     onGenreChange(null);
@@ -45,25 +47,27 @@ const FilterBar: React.FC<FilterBarProps> = ({
         </div>
 
         {/* Style toggle buttons */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 w-full sm:w-auto">
-          <span className="text-slate-300 text-sm font-medium whitespace-nowrap">Style:</span>
-          <div className="flex bg-slate-700 rounded-lg p-1 border border-slate-600">
-            {MOVIE_STYLES.map((style) => (
-              <button
-                key={style.id}
-                onClick={() => onStyleChange(style.id)}
-                title={style.description}
-                className={`px-3 py-2 sm:py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap min-h-[40px] sm:min-h-0 ${
-                  selectedStyle === style.id
-                    ? 'bg-blue-600 text-white'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                {style.label}
-              </button>
-            ))}
+        {!hideStyleFilter && (
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 w-full sm:w-auto">
+            <span className="text-slate-300 text-sm font-medium whitespace-nowrap">Style:</span>
+            <div className="flex bg-slate-700 rounded-lg p-1 border border-slate-600">
+              {MOVIE_STYLES.map((style) => (
+                <button
+                  key={style.id}
+                  onClick={() => onStyleChange(style.id)}
+                  title={style.description}
+                  className={`px-3 py-2 sm:py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap min-h-[40px] sm:min-h-0 ${
+                    selectedStyle === style.id
+                      ? 'bg-blue-600 text-white'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {style.label}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Clear filters button */}
         {hasActiveFilters && (
@@ -87,7 +91,7 @@ const FilterBar: React.FC<FilterBarProps> = ({
               {TMDB_GENRES.find(g => g.id === selectedGenre)?.name}
             </span>
           )}
-          {selectedStyle !== 'all' && (
+          {!hideStyleFilter && selectedStyle !== 'all' && (
             <span className="bg-purple-600/20 text-purple-400 px-2 py-1 rounded text-xs border border-purple-600/30">
               {MOVIE_STYLES.find(s => s.id === selectedStyle)?.label}
             </span>

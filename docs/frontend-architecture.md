@@ -24,6 +24,13 @@ frontend/
 │   │   ├── Auth/
 │   │   │   ├── Login.tsx          # Login form
 │   │   │   └── Register.tsx       # Registration form
+│   │   ├── Discover/
+│   │   │   ├── SwipeCardStack.tsx # Card stack with drag/swipe animations
+│   │   │   ├── SwipeCard.tsx      # Full-height poster card with gradient overlay
+│   │   │   ├── SwipeControls.tsx  # Undo/Watched/Skip buttons
+│   │   │   ├── FilterBar.tsx      # Genre & style filters (style hideable)
+│   │   │   ├── RatingModal.tsx    # Rate already-watched movies
+│   │   │   └── CardDetails.tsx    # Back of flipped card
 │   │   ├── Movies/
 │   │   │   ├── MovieCard.tsx      # Movie display card (search results)
 │   │   │   └── UserMovieCard.tsx  # User's rated movie card
@@ -79,11 +86,14 @@ frontend/
 ### 3. Layout Component (`src/components/Layout.tsx`)
 
 **Features:**
-- Top navigation bar
-- User info display
+- Top navigation bar (desktop)
+- **Hamburger menu** (mobile < 768px)
+- Mobile dropdown navigation with slide-down animation
+- User info display (hidden on mobile, shows logout icon)
 - Active route highlighting
-- Logout button
-- Responsive design
+- Logout button (icon on mobile, text on desktop)
+- **Fully responsive design**
+- Auto-close mobile menu on route change
 
 **Navigation Links:**
 - Dashboard
@@ -408,6 +418,10 @@ All API types are defined in `api.ts`:
 - Body background (dark theme)
 - Font family (system fonts)
 - Box-sizing reset
+- **`.scrollbar-hide`** - Hides scrollbar for horizontal tab navigation
+- **`.safe-bottom`/`.safe-top`** - Safe area insets for notched devices (iPhone X+)
+- **`.touch-pan-x`/`.touch-pan-y`** - Touch action utilities for swipe gestures
+- **`.scroll-smooth`** - iOS smooth scrolling
 
 ### Component Styling Patterns
 
@@ -476,10 +490,14 @@ navigate('/dashboard');
 - Friendly icons/emojis
 
 ### Responsive Design
-- Mobile-first approach
-- Grid layouts adapt to screen size
-- Hamburger menu (can be added)
-- Touch-friendly button sizes
+- **Mobile-first approach** with Tailwind breakpoints
+- Grid layouts adapt to screen size (1 col → 2 col → 3 col → 4 col)
+- **Hamburger menu** for mobile navigation (< 768px)
+- **Touch-friendly buttons** (minimum 44x44px on mobile)
+- **Bottom sheet modal** on mobile (slides up from bottom)
+- **Viewport-based heights** for swipe cards (65-70vh)
+- Stacked layouts on mobile, horizontal on desktop
+- Hidden scrollbars for horizontal tab navigation
 
 ### Optimistic Updates
 - Immediate UI updates
@@ -646,6 +664,7 @@ Set in deployment platform:
 - Drag-and-drop for watchlist ordering
 - Keyboard shortcuts
 - ~~Accessibility improvements (ARIA labels)~~ - **IMPLEMENTED**
+- ~~Mobile-responsive design~~ - **IMPLEMENTED (v1.3.0)**
 
 ## Implemented Features
 
@@ -654,6 +673,42 @@ The following UX features are now implemented:
 - **Optimistic updates with rollback** on rating changes and deletions
 - **React Router Link components** instead of anchor tags (no page reloads)
 - **Accessibility improvements**: aria-labels on icon buttons, aria-hidden on emojis
+
+### Mobile-Responsive Design (v1.3.0)
+
+The following mobile-responsive features are implemented:
+
+**Navigation:**
+- Hamburger menu on mobile (< 768px)
+- Slide-down mobile navigation menu
+- Auto-close on route change
+- Logout icon on mobile, text on desktop
+
+**Layout Components:**
+- `Layout.tsx` - Mobile hamburger menu with dropdown
+- `SwipeCardStack.tsx` - Viewport-based height (65-70vh), full-height poster with gradient overlay
+- `SwipeCard.tsx` - Full-height movie poster with gradient text overlay at bottom
+- `MovieDetailModal.tsx` - Bottom sheet on mobile, centered on desktop
+- `FilterBar.tsx` - Stacked controls on mobile, optional `hideStyleFilter` prop for swipe mode
+- `SwipeControls.tsx` - Larger touch targets (56px on mobile), triggers animated card transitions
+
+**Pages:**
+- `Dashboard.tsx` - Responsive progress bars, stacked layout
+- `MyMovies.tsx` - Stacked header/filters, touch-friendly toggles
+- `Watchlist.tsx` - Responsive cards, grid rating buttons
+- `Recommendations.tsx` - Stacked search, grid session stats
+
+**Touch Targets:**
+All interactive elements have minimum 44x44px touch targets on mobile for accessibility.
+
+**Responsive Breakpoints:**
+```
+< 640px  : Mobile (default styles)
+≥ 640px  : sm: prefix
+≥ 768px  : md: prefix (desktop navigation appears)
+≥ 1024px : lg: prefix
+≥ 1280px : xl: prefix
+```
 
 ### Developer Experience
 - Storybook for component library

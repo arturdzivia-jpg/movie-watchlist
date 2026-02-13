@@ -540,13 +540,14 @@ const Recommendations: React.FC = () => {
       {/* Swipe View */}
       {viewMode === 'swipe' && (
         <div className="flex flex-col items-center">
-          {/* Filter Bar for swipe view */}
+          {/* Filter Bar for swipe view (genre only) */}
           <div className="w-full max-w-md mb-4">
             <FilterBar
               selectedGenre={filters.genre ?? null}
               selectedStyle={filters.style ?? 'all'}
               onGenreChange={(genre) => setFilters(f => ({ ...f, genre }))}
               onStyleChange={(style) => setFilters(f => ({ ...f, style }))}
+              hideStyleFilter
             />
           </div>
 
@@ -620,7 +621,13 @@ const Recommendations: React.FC = () => {
               <SwipeControls
                 onUndo={swipeDiscover.undo}
                 onAlreadyWatched={swipeDiscover.openRatingModal}
-                onSkip={swipeDiscover.skip}
+                onSkip={() => {
+                  // Use triggerSwipe to animate the card before removing
+                  const triggerSwipe = (window as any).__triggerSwipe;
+                  if (triggerSwipe) {
+                    triggerSwipe('down');
+                  }
+                }}
                 canUndo={swipeDiscover.canUndo}
                 isProcessing={swipeDiscover.isProcessing}
               />

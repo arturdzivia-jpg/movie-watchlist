@@ -46,32 +46,34 @@ const SwipeCard: React.FC<SwipeCardProps> = ({ movie, onTap }) => {
           className="absolute inset-0 backface-hidden bg-slate-800 rounded-2xl overflow-hidden shadow-2xl border border-slate-700"
           style={{ backfaceVisibility: 'hidden' }}
         >
-          {/* Poster */}
-          <div className="relative h-[65%] bg-slate-700">
-            <img
-              src={imageError ? fallbackImage : (posterUrl || fallbackImage)}
-              alt={`Poster for ${movie.title}`}
-              className="w-full h-full object-cover"
-              onError={() => setImageError(true)}
-              draggable={false}
-            />
-            {/* Rating badge */}
-            <div className="absolute top-3 right-3 bg-black/70 text-white px-3 py-1 rounded-full text-sm font-bold flex items-center gap-1">
-              <span className="text-yellow-400">&#9733;</span>
-              {movie.vote_average.toFixed(1)}
-            </div>
+          {/* Full-height Poster */}
+          <img
+            src={imageError ? fallbackImage : (posterUrl || fallbackImage)}
+            alt={`Poster for ${movie.title}`}
+            className="absolute inset-0 w-full h-full object-cover"
+            onError={() => setImageError(true)}
+            draggable={false}
+          />
+
+          {/* Rating badge */}
+          <div className="absolute top-3 right-3 bg-black/70 text-white px-3 py-1 rounded-full text-sm font-bold flex items-center gap-1 z-10">
+            <span className="text-yellow-400">&#9733;</span>
+            {movie.vote_average.toFixed(1)}
           </div>
 
-          {/* Content */}
-          <div className="p-4 h-[35%] flex flex-col">
-            <h2 className="text-white font-bold text-xl mb-1 line-clamp-2">
+          {/* Gradient overlay at bottom */}
+          <div className="absolute inset-x-0 bottom-0 h-[45%] bg-gradient-to-t from-black/95 via-black/70 to-transparent" />
+
+          {/* Content over gradient */}
+          <div className="absolute inset-x-0 bottom-0 p-4 z-10">
+            <h2 className="text-white font-bold text-xl mb-1 line-clamp-2 drop-shadow-lg">
               {movie.title}
             </h2>
-            <p className="text-slate-400 text-sm mb-2">{year}</p>
+            <p className="text-slate-300 text-sm mb-2 drop-shadow">{year}</p>
 
             {/* Recommendation reason */}
             {movie.reasons && movie.reasons.length > 0 && (
-              <div className="bg-blue-900/30 border border-blue-700/40 rounded-lg px-3 py-2 mt-auto">
+              <div className="bg-blue-900/50 border border-blue-700/40 rounded-lg px-3 py-2 backdrop-blur-sm">
                 <p className="text-blue-300 text-xs line-clamp-2">
                   <span aria-hidden="true">&#128161; </span>
                   {movie.reasons[0]}
@@ -80,7 +82,7 @@ const SwipeCard: React.FC<SwipeCardProps> = ({ movie, onTap }) => {
             )}
 
             {/* Tap hint */}
-            <p className="text-slate-500 text-xs text-center mt-2">
+            <p className="text-slate-400 text-xs text-center mt-2 drop-shadow">
               Tap for more details
             </p>
           </div>
