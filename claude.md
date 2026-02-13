@@ -32,6 +32,9 @@ A full-stack web application for managing movie watchlists with personalized rec
   - Maintain a watchlist of movies to watch
   - Get AI-powered personalized movie recommendations
   - View statistics and rating distribution
+  - Filter discover page by genre and style (Movies, Anime, Cartoons)
+  - Toggle between list and grid view on My Movies page
+  - View full movie details in modal (cast, director, runtime)
 
 - **Technical Features:**
   - Multi-user support with data isolation
@@ -217,6 +220,9 @@ Watchlist:
 Recommendations:
   GET    /api/recommendations?limit=20
   GET    /api/recommendations/preferences
+
+Discover:
+  GET    /api/discover?category=popular&page=1&genre=28&style=anime
 ```
 
 #### Frontend Routes (Overview)
@@ -228,9 +234,9 @@ Public:
 
 Protected (requires auth):
   /            → Dashboard (statistics)
-  /movies      → My Movies (rated movies list)
-  /watchlist   → Watchlist (movies to watch)
-  /recommendations → Discover movies + search
+  /movies      → My Movies (rated movies list/grid with detail modal)
+  /watchlist   → Watchlist (movies to watch with detail modal)
+  /recommendations → Discover movies (grid/swipe view, genre/style filters)
 ```
 
 ---
@@ -879,7 +885,7 @@ For questions or issues:
 
 **Last Updated:** 2025-02-13
 
-**Version:** 1.1.0
+**Version:** 1.2.0
 
 **Maintainers:** See [README.md](README.md)
 
@@ -906,3 +912,9 @@ The following features are already implemented in the codebase:
 - **Parallel API Fetching:** Recommendations use `Promise.all()` for 3-5x faster load
 - **Database Indexes:** Custom indexes on userId, movieId, rating for fast queries
 - **Movie Caching:** 30-day cache reduces TMDB API calls
+
+### UI Features
+- **Genre & Style Filtering:** Filter discover page by any TMDB genre and style (Movies, Anime, Cartoons)
+- **View Mode Toggle:** My Movies supports both list and grid views (persisted to localStorage)
+- **Movie Detail Modal:** Click any movie to see full details including cast, director, runtime
+- **Swipe Discovery:** Tinder-like card swiping for quick movie decisions with keyboard shortcuts
