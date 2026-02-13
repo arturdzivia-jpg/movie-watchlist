@@ -68,9 +68,22 @@ const Recommendations: React.FC = () => {
   // Swipe view hook - pass current category
   const swipeDiscover = useSwipeDiscover(category);
 
-  // Persist view mode preference
+  // Persist view mode preference and clear grid cache when switching from swipe to grid
+  // (to ensure movies added to watchlist/rated in swipe mode are filtered out)
+  const prevViewModeRef = useRef(viewMode);
   useEffect(() => {
     localStorage.setItem('recommendationsViewMode', viewMode);
+
+    // Clear grid cache when switching from swipe to grid
+    if (prevViewModeRef.current === 'swipe' && viewMode === 'grid') {
+      setCategoryCache({
+        for_you: createEmptyCache(),
+        popular: createEmptyCache(),
+        new_releases: createEmptyCache(),
+        top_rated: createEmptyCache()
+      });
+    }
+    prevViewModeRef.current = viewMode;
   }, [viewMode]);
 
   // Keyboard shortcuts for swipe view
