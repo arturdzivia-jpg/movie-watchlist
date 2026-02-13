@@ -1,12 +1,12 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Recommendation } from '../../services/api';
+import { DiscoverMovie } from '../../services/api';
 import { SwipeDirection } from '../../types/discover';
 import SwipeCard from './SwipeCard';
 
 interface SwipeCardStackProps {
-  cards: Recommendation[];
-  onSwipe: (direction: SwipeDirection, movie: Recommendation) => void;
-  onCardLeftScreen: (movie: Recommendation) => void;
+  cards: DiscoverMovie[];
+  onSwipe: (direction: SwipeDirection, movie: DiscoverMovie) => void;
+  onCardLeftScreen: (movie: DiscoverMovie) => void;
   isProcessing: boolean;
 }
 
@@ -26,7 +26,7 @@ const SwipeCardStack: React.FC<SwipeCardStackProps> = ({
     currentX: 0,
     currentY: 0,
   });
-  const [swipingOut, setSwipingOut] = useState<{ direction: SwipeDirection; movie: Recommendation } | null>(null);
+  const [swipingOut, setSwipingOut] = useState<{ direction: SwipeDirection; movie: DiscoverMovie } | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
 
   // Only show top 3 cards for performance

@@ -131,6 +131,8 @@ class TMDBService {
     sort_by?: string;
     page?: number;
     'vote_count.gte'?: number;
+    'primary_release_date.lte'?: string;
+    'primary_release_date.gte'?: string;
   }): Promise<TMDBSearchResponse> {
     try {
       const response = await axios.get(`${this.baseUrl}/discover/movie`, {

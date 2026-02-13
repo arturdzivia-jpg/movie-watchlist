@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Recommendation } from '../../services/api';
+import { DiscoverMovie } from '../../services/api';
 import CardDetails from './CardDetails';
 
 interface SwipeCardProps {
-  movie: Recommendation;
+  movie: DiscoverMovie;
   onTap?: () => void;
 }
 

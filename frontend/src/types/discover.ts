@@ -1,11 +1,11 @@
-import { Recommendation, Rating } from '../services/api';
+import { DiscoverMovie, Rating } from '../services/api';
 
 export type SwipeDirection = 'left' | 'right' | 'up' | 'down';
 
 export type SwipeActionType = Rating | 'WATCHLIST' | 'SKIP';
 
 export interface SwipeAction {
-  movie: Recommendation;
+  movie: DiscoverMovie;
   action: SwipeActionType;
   apiRecordId?: string;
   timestamp: number;
@@ -22,7 +22,7 @@ export interface SwipeSessionStats {
 }
 
 export interface SwipeDiscoverState {
-  cardStack: Recommendation[];
+  cardStack: DiscoverMovie[];
   currentIndex: number;
   swipeHistory: SwipeAction[];
   isLoading: boolean;
@@ -33,8 +33,8 @@ export interface SwipeDiscoverState {
 }
 
 export interface UseSwipeDiscoverReturn {
-  cards: Recommendation[];
-  currentCard: Recommendation | null;
+  cards: DiscoverMovie[];
+  currentCard: DiscoverMovie | null;
   isLoading: boolean;
   isPrefetching: boolean;
   isProcessing: boolean;

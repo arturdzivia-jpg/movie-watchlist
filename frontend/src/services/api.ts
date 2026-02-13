@@ -100,6 +100,21 @@ export interface Recommendation extends TMDBMovie {
   reasons: string[];
 }
 
+// Discover types
+export type DiscoverCategory = 'for_you' | 'popular' | 'new_releases' | 'top_rated';
+
+export interface DiscoverMovie extends TMDBMovie {
+  score?: number;
+  reasons?: string[];
+}
+
+export interface DiscoverResponse {
+  movies: DiscoverMovie[];
+  page: number;
+  total_pages: number;
+  category: DiscoverCategory;
+}
+
 // Auth API
 export const authAPI = {
   register: (email: string, username: string, password: string) =>
@@ -164,6 +179,14 @@ export const recommendationsAPI = {
 
   getPreferences: () =>
     api.get('/api/recommendations/preferences')
+};
+
+// Discover API
+export const discoverAPI = {
+  get: (category: DiscoverCategory, page = 1) =>
+    api.get<DiscoverResponse>('/api/discover', {
+      params: { category, page }
+    })
 };
 
 export default api;

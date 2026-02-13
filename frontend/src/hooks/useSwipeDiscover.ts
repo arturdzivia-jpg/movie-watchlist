@@ -1,8 +1,7 @@
-import { useState, useCallback, useEffect } from 'react';
-import { Recommendation, Rating, recommendationsAPI, userMoviesAPI, watchlistAPI } from '../services/api';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { DiscoverMovie, DiscoverCategory, Rating, discoverAPI, userMoviesAPI, watchlistAPI } from '../services/api';
 import { SwipeDirection, SwipeAction, SwipeSessionStats, UseSwipeDiscoverReturn } from '../types/discover';
 
-const INITIAL_LOAD_COUNT = 30;
 const PREFETCH_THRESHOLD = 10;
 const MAX_UNDO_HISTORY = 3;
 
@@ -16,8 +15,8 @@ const initialStats: SwipeSessionStats = {
   total: 0,
 };
 
-export const useSwipeDiscover = (): UseSwipeDiscoverReturn => {
-  const [cardStack, setCardStack] = useState<Recommendation[]>([]);
+export const useSwipeDiscover = (category: DiscoverCategory = 'for_you'): UseSwipeDiscoverReturn => {
+  const [cardStack, setCardStack] = useState<DiscoverMovie[]>([]);
   const [swipeHistory, setSwipeHistory] = useState<SwipeAction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isPrefetching, setIsPrefetching] = useState(false);
@@ -25,20 +24,35 @@ export const useSwipeDiscover = (): UseSwipeDiscoverReturn => {
   const [stats, setStats] = useState<SwipeSessionStats>(initialStats);
   const [error, setError] = useState<string | null>(null);
   const [seenIds, setSeenIds] = useState<Set<number>>(new Set());
+  const [currentPage, setCurrentPage] = useState(1);
+  const prevCategoryRef = useRef(category);
 
-  // Load initial recommendations
-  const loadRecommendations = useCallback(async (count: number = INITIAL_LOAD_COUNT) => {
+  // Load movies for the current category
+  const loadMovies = useCallback(async (page: number = 1) => {
     try {
-      const response = await recommendationsAPI.get(count);
-      const newMovies = response.data.recommendations.filter(
+      const response = await discoverAPI.get(category, page);
+      const newMovies = response.data.movies.filter(
         (movie) => !seenIds.has(movie.id)
       );
-      return newMovies;
+      return { movies: newMovies, totalPages: response.data.total_pages };
     } catch (err) {
-      console.error('Failed to load recommendations:', err);
+      console.error('Failed to load movies:', err);
       throw err;
     }
-  }, [seenIds]);
+  }, [category, seenIds]);
+
+  // Reset when category changes
+  useEffect(() => {
+    if (prevCategoryRef.current !== category) {
+      prevCategoryRef.current = category;
+      setCardStack([]);
+      setSwipeHistory([]);
+      setStats(initialStats);
+      setSeenIds(new Set());
+      setCurrentPage(1);
+      setError(null);
+    }
+  }, [category]);
 
   // Initial load
   useEffect(() => {
@@ -46,17 +60,18 @@ export const useSwipeDiscover = (): UseSwipeDiscoverReturn => {
       setIsLoading(true);
       setError(null);
       try {
-        const movies = await loadRecommendations(INITIAL_LOAD_COUNT);
+        const { movies } = await loadMovies(1);
         setCardStack(movies);
         setSeenIds(new Set(movies.map((m) => m.id)));
+        setCurrentPage(1);
       } catch (err) {
-        setError('Failed to load recommendations. Please try again.');
+        setError('Failed to load movies. Please try again.');
       } finally {
         setIsLoading(false);
       }
     };
     init();
-  }, []);
+  }, [category]);
 
   // Pre-fetch when running low on cards
   useEffect(() => {
@@ -64,7 +79,8 @@ export const useSwipeDiscover = (): UseSwipeDiscoverReturn => {
       if (cardStack.length <= PREFETCH_THRESHOLD && !isPrefetching && !isLoading) {
         setIsPrefetching(true);
         try {
-          const newMovies = await loadRecommendations(INITIAL_LOAD_COUNT);
+          const nextPage = currentPage + 1;
+          const { movies: newMovies } = await loadMovies(nextPage);
           if (newMovies.length > 0) {
             setCardStack((prev) => [...prev, ...newMovies]);
             setSeenIds((prev) => {
@@ -72,6 +88,7 @@ export const useSwipeDiscover = (): UseSwipeDiscoverReturn => {
               newMovies.forEach((m) => updated.add(m.id));
               return updated;
             });
+            setCurrentPage(nextPage);
           }
         } catch (err) {
           console.error('Pre-fetch failed:', err);
@@ -81,7 +98,7 @@ export const useSwipeDiscover = (): UseSwipeDiscoverReturn => {
       }
     };
     prefetch();
-  }, [cardStack.length, isPrefetching, isLoading, loadRecommendations]);
+  }, [cardStack.length, isPrefetching, isLoading, loadMovies, currentPage]);
 
   // Map swipe direction to rating
   const directionToRating = (direction: SwipeDirection): Rating | null => {
@@ -282,7 +299,7 @@ export const useSwipeDiscover = (): UseSwipeDiscoverReturn => {
     }
   }, [swipeHistory, isProcessing, updateStats]);
 
-  // Load more recommendations manually
+  // Load more movies manually
   const loadMore = useCallback(async () => {
     if (isLoading || isPrefetching) return;
 
@@ -290,19 +307,21 @@ export const useSwipeDiscover = (): UseSwipeDiscoverReturn => {
     setError(null);
 
     try {
-      const newMovies = await loadRecommendations(INITIAL_LOAD_COUNT);
+      const nextPage = currentPage + 1;
+      const { movies: newMovies } = await loadMovies(nextPage);
       setCardStack((prev) => [...prev, ...newMovies]);
       setSeenIds((prev) => {
         const updated = new Set(prev);
         newMovies.forEach((m) => updated.add(m.id));
         return updated;
       });
+      setCurrentPage(nextPage);
     } catch (err) {
       setError('Failed to load more movies.');
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, isPrefetching, loadRecommendations]);
+  }, [isLoading, isPrefetching, loadMovies, currentPage]);
 
   // Skip current movie (no rating, no watchlist)
   const skip = useCallback(async () => {

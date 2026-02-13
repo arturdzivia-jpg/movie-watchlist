@@ -1,24 +1,52 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { recommendationsAPI, userMoviesAPI, watchlistAPI, Recommendation, Rating, moviesAPI, TMDBMovie } from '../services/api';
+import { discoverAPI, userMoviesAPI, watchlistAPI, DiscoverMovie, DiscoverCategory, Rating, moviesAPI, TMDBMovie } from '../services/api';
 import MovieCard from '../components/Movies/MovieCard';
 import { SwipeCardStack, SwipeControls } from '../components/Discover';
 import { useSwipeDiscover } from '../hooks/useSwipeDiscover';
 import { SwipeDirection } from '../types/discover';
 
 type ViewMode = 'grid' | 'swipe';
-const GRID_LOAD_COUNT = 20;
+
+interface CategoryCache {
+  movies: DiscoverMovie[];
+  page: number;
+  hasMore: boolean;
+  seenIds: Set<number>;
+}
+
+const CATEGORY_TABS: { id: DiscoverCategory; label: string }[] = [
+  { id: 'for_you', label: 'For You' },
+  { id: 'popular', label: 'Popular' },
+  { id: 'new_releases', label: 'New Releases' },
+  { id: 'top_rated', label: 'Top Rated' }
+];
+
+const createEmptyCache = (): CategoryCache => ({
+  movies: [],
+  page: 0,
+  hasMore: true,
+  seenIds: new Set()
+});
 
 const Recommendations: React.FC = () => {
-  // Grid view state
-  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  // Category state
+  const [category, setCategory] = useState<DiscoverCategory>('for_you');
+  const [categoryCache, setCategoryCache] = useState<Record<DiscoverCategory, CategoryCache>>({
+    for_you: createEmptyCache(),
+    popular: createEmptyCache(),
+    new_releases: createEmptyCache(),
+    top_rated: createEmptyCache()
+  });
+
+  // Search state
   const [searchResults, setSearchResults] = useState<TMDBMovie[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [activeTab, setActiveTab] = useState<'category' | 'search'>('category');
+
+  // Loading state
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [isSearching, setIsSearching] = useState(false);
-  const [activeTab, setActiveTab] = useState<'recommended' | 'search'>('recommended');
-  const [seenGridIds, setSeenGridIds] = useState<Set<number>>(new Set());
-  const [hasMoreRecommendations, setHasMoreRecommendations] = useState(true);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   // View mode state (persisted to localStorage)
@@ -27,66 +55,67 @@ const Recommendations: React.FC = () => {
     return (saved as ViewMode) || 'grid';
   });
 
-  // Swipe view hook
-  const swipeDiscover = useSwipeDiscover();
+  // Swipe view hook - pass current category
+  const swipeDiscover = useSwipeDiscover(category);
 
   // Persist view mode preference
   useEffect(() => {
     localStorage.setItem('recommendationsViewMode', viewMode);
   }, [viewMode]);
 
-  // Load grid recommendations
+  // Load category movies on mount or category change
   useEffect(() => {
-    if (viewMode === 'grid' && activeTab === 'recommended' && recommendations.length === 0) {
-      loadRecommendations(true);
+    if (viewMode === 'grid' && activeTab === 'category' && categoryCache[category].movies.length === 0) {
+      loadCategoryMovies(category, true);
     }
-  }, [activeTab, viewMode]);
+  }, [category, activeTab, viewMode]);
 
-  const loadRecommendations = useCallback(async (isInitial: boolean = true) => {
+  const loadCategoryMovies = useCallback(async (cat: DiscoverCategory, isInitial: boolean = true) => {
     try {
       if (isInitial) {
         setIsLoading(true);
-        setSeenGridIds(new Set());
       } else {
         setIsLoadingMore(true);
       }
 
-      const response = await recommendationsAPI.get(GRID_LOAD_COUNT);
-      const newMovies = response.data.recommendations;
+      const page = isInitial ? 1 : categoryCache[cat].page + 1;
+      const response = await discoverAPI.get(cat, page);
+      const newMovies = response.data.movies;
 
-      if (isInitial) {
-        setRecommendations(newMovies);
-        setSeenGridIds(new Set(newMovies.map(m => m.id)));
-        setHasMoreRecommendations(newMovies.length >= GRID_LOAD_COUNT);
-      } else {
-        // Filter out already seen movies
-        const uniqueNewMovies = newMovies.filter(m => !seenGridIds.has(m.id));
-        if (uniqueNewMovies.length > 0) {
-          setRecommendations(prev => [...prev, ...uniqueNewMovies]);
-          setSeenGridIds(prev => {
-            const updated = new Set(prev);
-            uniqueNewMovies.forEach(m => updated.add(m.id));
-            return updated;
-          });
-        }
-        setHasMoreRecommendations(uniqueNewMovies.length >= GRID_LOAD_COUNT / 2);
-      }
+      setCategoryCache(prev => {
+        const currentCache = prev[cat];
+        const existingSeenIds = isInitial ? new Set<number>() : currentCache.seenIds;
+        const uniqueNewMovies = newMovies.filter(m => !existingSeenIds.has(m.id));
+
+        const updatedSeenIds = new Set(existingSeenIds);
+        uniqueNewMovies.forEach(m => updatedSeenIds.add(m.id));
+
+        return {
+          ...prev,
+          [cat]: {
+            movies: isInitial ? uniqueNewMovies : [...currentCache.movies, ...uniqueNewMovies],
+            page: response.data.page,
+            hasMore: response.data.page < response.data.total_pages,
+            seenIds: updatedSeenIds
+          }
+        };
+      });
     } catch (error) {
-      console.error('Failed to load recommendations:', error);
+      console.error(`Failed to load ${cat} movies:`, error);
     } finally {
       setIsLoading(false);
       setIsLoadingMore(false);
     }
-  }, [seenGridIds]);
+  }, [categoryCache]);
 
   // Infinite scroll observer for grid view
   useEffect(() => {
-    if (viewMode !== 'grid' || activeTab !== 'recommended') return;
+    if (viewMode !== 'grid' || activeTab !== 'category') return;
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && !isLoading && !isLoadingMore && hasMoreRecommendations) {
-          loadRecommendations(false);
+        if (entries[0].isIntersecting && !isLoading && !isLoadingMore && categoryCache[category].hasMore) {
+          loadCategoryMovies(category, false);
         }
       },
       { threshold: 0.1 }
@@ -97,7 +126,17 @@ const Recommendations: React.FC = () => {
     }
 
     return () => observer.disconnect();
-  }, [viewMode, activeTab, isLoading, isLoadingMore, hasMoreRecommendations, loadRecommendations]);
+  }, [viewMode, activeTab, category, isLoading, isLoadingMore, categoryCache, loadCategoryMovies]);
+
+  // Handle category change
+  const handleCategoryChange = (newCategory: DiscoverCategory) => {
+    setCategory(newCategory);
+    setActiveTab('category');
+    // Load if not already cached
+    if (categoryCache[newCategory].movies.length === 0) {
+      loadCategoryMovies(newCategory, true);
+    }
+  };
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -116,14 +155,26 @@ const Recommendations: React.FC = () => {
     }
   };
 
+  // Remove movie from all caches
+  const removeMovieFromCaches = (tmdbId: number) => {
+    setCategoryCache(prev => {
+      const updated = { ...prev };
+      for (const cat of Object.keys(updated) as DiscoverCategory[]) {
+        updated[cat] = {
+          ...updated[cat],
+          movies: updated[cat].movies.filter(m => m.id !== tmdbId)
+        };
+      }
+      return updated;
+    });
+    setSearchResults(prev => prev.filter(r => r.id !== tmdbId));
+  };
+
   const handleRate = async (tmdbId: number, rating: Rating) => {
     try {
       await userMoviesAPI.add(tmdbId, rating, true);
       alert('Movie added to your list!');
-
-      // Remove from recommendations/search results
-      setRecommendations(recommendations.filter(r => r.id !== tmdbId));
-      setSearchResults(searchResults.filter(r => r.id !== tmdbId));
+      removeMovieFromCaches(tmdbId);
     } catch (error: any) {
       console.error('Failed to rate movie:', error);
       if (error.response?.status === 400) {
@@ -138,10 +189,7 @@ const Recommendations: React.FC = () => {
     try {
       await watchlistAPI.add(tmdbId);
       alert('Movie added to watchlist!');
-
-      // Remove from recommendations/search results
-      setRecommendations(recommendations.filter(r => r.id !== tmdbId));
-      setSearchResults(searchResults.filter(r => r.id !== tmdbId));
+      removeMovieFromCaches(tmdbId);
     } catch (error: any) {
       console.error('Failed to add to watchlist:', error);
       if (error.response?.status === 400) {
@@ -153,11 +201,11 @@ const Recommendations: React.FC = () => {
   };
 
   // Swipe handlers
-  const handleSwipe = (direction: SwipeDirection, _movie: Recommendation) => {
+  const handleSwipe = (direction: SwipeDirection, _movie: DiscoverMovie) => {
     swipeDiscover.swipe(direction);
   };
 
-  const handleCardLeftScreen = (_movie: Recommendation) => {
+  const handleCardLeftScreen = (_movie: DiscoverMovie) => {
     // Card animation completed
   };
 
@@ -231,21 +279,24 @@ const Recommendations: React.FC = () => {
             </form>
           </div>
 
-          <div className="flex space-x-4 mb-6 border-b border-slate-700">
-            <button
-              onClick={() => setActiveTab('recommended')}
-              className={`px-4 py-2 font-medium transition-colors ${
-                activeTab === 'recommended'
-                  ? 'text-blue-400 border-b-2 border-blue-400'
-                  : 'text-slate-400 hover:text-slate-300'
-              }`}
-            >
-              Recommended for You
-            </button>
+          <div className="flex space-x-1 mb-6 border-b border-slate-700 overflow-x-auto">
+            {CATEGORY_TABS.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => handleCategoryChange(tab.id)}
+                className={`px-4 py-2 font-medium transition-colors whitespace-nowrap ${
+                  activeTab === 'category' && category === tab.id
+                    ? 'text-blue-400 border-b-2 border-blue-400'
+                    : 'text-slate-400 hover:text-slate-300'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
             {searchResults.length > 0 && (
               <button
                 onClick={() => setActiveTab('search')}
-                className={`px-4 py-2 font-medium transition-colors ${
+                className={`px-4 py-2 font-medium transition-colors whitespace-nowrap ${
                   activeTab === 'search'
                     ? 'text-blue-400 border-b-2 border-blue-400'
                     : 'text-slate-400 hover:text-slate-300'
@@ -256,25 +307,31 @@ const Recommendations: React.FC = () => {
             )}
           </div>
 
-          {activeTab === 'recommended' && (
+          {activeTab === 'category' && (
             <>
               {isLoading ? (
                 <div className="flex justify-center items-center h-64">
-                  <div className="text-white text-xl">Loading recommendations...</div>
+                  <div className="text-white text-xl">Loading movies...</div>
                 </div>
-              ) : recommendations.length === 0 ? (
+              ) : categoryCache[category].movies.length === 0 ? (
                 <div className="bg-slate-800 rounded-lg p-12 text-center border border-slate-700">
                   <div className="text-6xl mb-4">&#127916;</div>
-                  <h2 className="text-xl font-semibold text-white mb-2">No recommendations yet</h2>
+                  <h2 className="text-xl font-semibold text-white mb-2">
+                    {category === 'for_you' ? 'No recommendations yet' : 'No movies found'}
+                  </h2>
                   <p className="text-slate-400 mb-4">
-                    Rate some movies first to get personalized recommendations!
+                    {category === 'for_you'
+                      ? 'Rate some movies first to get personalized recommendations!'
+                      : 'Try another category or search for movies.'}
                   </p>
-                  <p className="text-slate-300 mb-6">Use the search bar above to find and rate movies.</p>
+                  {category === 'for_you' && (
+                    <p className="text-slate-300 mb-6">Use the search bar above to find and rate movies.</p>
+                  )}
                 </div>
               ) : (
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {recommendations.map((movie) => (
+                    {categoryCache[category].movies.map((movie) => (
                       <div key={movie.id}>
                         <MovieCard
                           movie={movie}
@@ -294,13 +351,17 @@ const Recommendations: React.FC = () => {
                   {/* Infinite scroll trigger */}
                   <div ref={loadMoreRef} className="flex justify-center py-8">
                     {isLoadingMore && (
-                      <div className="text-slate-400">Loading more recommendations...</div>
+                      <div className="text-slate-400">Loading more movies...</div>
                     )}
-                    {!isLoadingMore && hasMoreRecommendations && (
+                    {!isLoadingMore && categoryCache[category].hasMore && (
                       <div className="text-slate-500 text-sm">Scroll for more</div>
                     )}
-                    {!hasMoreRecommendations && recommendations.length > 0 && (
-                      <div className="text-slate-500 text-sm">You've seen all recommendations. Rate some movies to get more!</div>
+                    {!categoryCache[category].hasMore && categoryCache[category].movies.length > 0 && (
+                      <div className="text-slate-500 text-sm">
+                        {category === 'for_you'
+                          ? "You've seen all recommendations. Rate some movies to get more!"
+                          : "You've reached the end."}
+                      </div>
                     )}
                   </div>
                 </>

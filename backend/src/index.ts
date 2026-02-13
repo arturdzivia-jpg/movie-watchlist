@@ -8,6 +8,7 @@ import movieRoutes from './routes/movies';
 import userMovieRoutes from './routes/userMovies';
 import watchlistRoutes from './routes/watchlist';
 import recommendationRoutes from './routes/recommendations';
+import discoverRoutes from './routes/discover';
 import prisma from './config/database';
 
 dotenv.config();
@@ -49,6 +50,7 @@ app.use('/api/movies', movieRoutes);
 app.use('/api/user/movies', userMovieRoutes);
 app.use('/api/watchlist', watchlistRoutes);
 app.use('/api/recommendations', recommendationRoutes);
+app.use('/api/discover', discoverRoutes);
 
 // Health check with database connectivity
 app.get('/health', async (req, res) => {

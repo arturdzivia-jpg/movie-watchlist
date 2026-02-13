@@ -1,8 +1,8 @@
 import React from 'react';
-import { Recommendation } from '../../services/api';
+import { DiscoverMovie } from '../../services/api';
 
 interface CardDetailsProps {
-  movie: Recommendation;
+  movie: DiscoverMovie;
   onClose: () => void;
 }
 
