@@ -12,7 +12,8 @@
     "start": "npx prisma db push && node dist/index.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:studio": "prisma studio"
+    "prisma:studio": "prisma studio",
+    "backfill": "npx ts-node scripts/backfillMovies.ts"
   },
   "keywords": ["movie", "watchlist", "recommendations"],
   "author": "",
