@@ -283,6 +283,57 @@ const Dashboard: React.FC = () => {
               </div>
             )}
 
+            {/* Disliked Genres */}
+            {preferences.dislikedGenres.length > 0 && (
+              <div>
+                <h3 className="text-slate-400 text-sm font-medium mb-2">Genres You Avoid</h3>
+                <div className="flex flex-wrap gap-2">
+                  {preferences.dislikedGenres.slice(0, 5).map((genre) => (
+                    <span
+                      key={genre.id}
+                      className="bg-red-900/50 border border-red-700/40 text-red-300 px-3 py-1 rounded-full text-sm"
+                    >
+                      {genre.name} ({genre.count})
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Favorite Franchises */}
+            {preferences.likedCollections && preferences.likedCollections.length > 0 && (
+              <div>
+                <h3 className="text-slate-400 text-sm font-medium mb-2">Favorite Franchises</h3>
+                <div className="flex flex-wrap gap-2">
+                  {preferences.likedCollections.slice(0, 3).map((collection) => (
+                    <span
+                      key={collection.id}
+                      className="bg-pink-900/50 border border-pink-700/40 text-pink-300 px-3 py-1 rounded-full text-sm"
+                    >
+                      {collection.name} ({collection.count})
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Favorite Studios */}
+            {preferences.likedProductionCompanies && preferences.likedProductionCompanies.length > 0 && (
+              <div>
+                <h3 className="text-slate-400 text-sm font-medium mb-2">Favorite Studios</h3>
+                <div className="flex flex-wrap gap-2">
+                  {preferences.likedProductionCompanies.slice(0, 3).map((company) => (
+                    <span
+                      key={company.id}
+                      className="bg-indigo-900/50 border border-indigo-700/40 text-indigo-300 px-3 py-1 rounded-full text-sm"
+                    >
+                      {company.name} ({company.count})
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Preferred Era & Runtime */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {preferences.preferredEras.length > 0 && (

@@ -156,6 +156,20 @@ export interface RuntimePreference {
   avgRating: number;
 }
 
+export interface CollectionPreference {
+  id: number;
+  name: string;
+  count: number;
+  avgRating: number;
+}
+
+export interface ProductionCompanyPreference {
+  id: number;
+  name: string;
+  count: number;
+  avgRating: number;
+}
+
 export interface UserPreferences {
   preferredGenres: GenrePreference[];
   likedDirectors: DirectorPreference[];
@@ -163,6 +177,8 @@ export interface UserPreferences {
   dislikedGenres: GenrePreference[];
   preferredEras: EraPreference[];
   preferredRuntime: RuntimePreference | null;
+  likedCollections: CollectionPreference[];
+  likedProductionCompanies: ProductionCompanyPreference[];
   ratingStyle: 'generous' | 'balanced' | 'critical';
   totalRatedMovies: number;
 }
