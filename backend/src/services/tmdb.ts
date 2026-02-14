@@ -4,7 +4,26 @@ const TMDB_API_KEY = process.env.TMDB_API_KEY;
 const TMDB_BASE_URL = process.env.TMDB_BASE_URL || 'https://api.themoviedb.org/3';
 
 if (!TMDB_API_KEY) {
-  console.warn('⚠️  TMDB_API_KEY not set in environment variables');
+  console.warn('Warning: TMDB_API_KEY not set in environment variables');
+}
+
+export interface TMDBKeyword {
+  id: number;
+  name: string;
+}
+
+export interface TMDBProductionCompany {
+  id: number;
+  name: string;
+  logo_path: string | null;
+  origin_country: string;
+}
+
+export interface TMDBCollection {
+  id: number;
+  name: string;
+  poster_path: string | null;
+  backdrop_path: string | null;
 }
 
 export interface TMDBMovie {
@@ -22,11 +41,16 @@ export interface TMDBMovie {
   // Optional fields added when enriched with full details
   director?: string;
   cast?: { id: number; name: string }[];
+  keywords?: TMDBKeyword[];
+  belongs_to_collection?: TMDBCollection | null;
+  production_companies?: TMDBProductionCompany[];
 }
 
 export interface TMDBMovieDetails extends TMDBMovie {
   genres: { id: number; name: string }[];
   runtime: number;
+  belongs_to_collection: TMDBCollection | null;
+  production_companies: TMDBProductionCompany[];
   credits?: {
     cast: { id: number; name: string; character: string; profile_path: string | null }[];
     crew: { id: number; name: string; job: string; department: string }[];
@@ -38,6 +62,20 @@ export interface TMDBSearchResponse {
   results: TMDBMovie[];
   total_pages: number;
   total_results: number;
+}
+
+export interface TMDBKeywordsResponse {
+  id: number;
+  keywords: TMDBKeyword[];
+}
+
+export interface TMDBGenre {
+  id: number;
+  name: string;
+}
+
+export interface TMDBGenreListResponse {
+  genres: TMDBGenre[];
 }
 
 class TMDBService {
@@ -79,6 +117,43 @@ class TMDBService {
     } catch (error) {
       console.error('TMDB get movie details error:', error);
       throw new Error('Failed to get movie details');
+    }
+  }
+
+  // Fetch movie keywords for fine-grained matching
+  async getMovieKeywords(tmdbId: number): Promise<TMDBKeyword[]> {
+    try {
+      const response = await axios.get<TMDBKeywordsResponse>(
+        `${this.baseUrl}/movie/${tmdbId}/keywords`,
+        {
+          params: {
+            api_key: this.apiKey
+          }
+        }
+      );
+      return response.data.keywords || [];
+    } catch (error) {
+      console.error('TMDB get movie keywords error:', error);
+      return []; // Return empty array on error, don't break the flow
+    }
+  }
+
+  // Get full movie details including keywords, collection, and production companies
+  async getEnhancedMovieDetails(tmdbId: number): Promise<TMDBMovieDetails & { keywords: TMDBKeyword[] }> {
+    try {
+      // Fetch details and keywords in parallel
+      const [details, keywords] = await Promise.all([
+        this.getMovieDetails(tmdbId),
+        this.getMovieKeywords(tmdbId)
+      ]);
+
+      return {
+        ...details,
+        keywords
+      };
+    } catch (error) {
+      console.error('TMDB get enhanced movie details error:', error);
+      throw new Error('Failed to get enhanced movie details');
     }
   }
 
@@ -135,9 +210,12 @@ class TMDBService {
     without_genres?: string;
     with_original_language?: string;
     without_original_language?: string;
+    with_keywords?: string;
     sort_by?: string;
     page?: number;
     'vote_count.gte'?: number;
+    'vote_count.lte'?: number;
+    'vote_average.gte'?: number;
     'primary_release_date.lte'?: string;
     'primary_release_date.gte'?: string;
   }): Promise<TMDBSearchResponse> {
@@ -153,6 +231,73 @@ class TMDBService {
     } catch (error) {
       console.error('TMDB discover movies error:', error);
       throw new Error('Failed to discover movies');
+    }
+  }
+
+  // Get all TMDB genres (useful for exploration feature)
+  async getGenreList(): Promise<TMDBGenre[]> {
+    try {
+      const response = await axios.get<TMDBGenreListResponse>(
+        `${this.baseUrl}/genre/movie/list`,
+        {
+          params: {
+            api_key: this.apiKey,
+            language: 'en-US'
+          }
+        }
+      );
+      return response.data.genres || [];
+    } catch (error) {
+      console.error('TMDB get genre list error:', error);
+      return [];
+    }
+  }
+
+  // Get movies from a specific collection (franchise)
+  async getCollectionMovies(collectionId: number): Promise<TMDBMovie[]> {
+    try {
+      const response = await axios.get(`${this.baseUrl}/collection/${collectionId}`, {
+        params: {
+          api_key: this.apiKey,
+          language: 'en-US'
+        }
+      });
+      return response.data.parts || [];
+    } catch (error) {
+      console.error('TMDB get collection movies error:', error);
+      return [];
+    }
+  }
+
+  // Get new releases (movies from last 3 months)
+  async getNewReleases(page: number = 1): Promise<TMDBSearchResponse> {
+    const now = new Date();
+    const threeMonthsAgo = new Date(now);
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+
+    return this.discoverMovies({
+      'primary_release_date.gte': threeMonthsAgo.toISOString().split('T')[0],
+      'primary_release_date.lte': now.toISOString().split('T')[0],
+      sort_by: 'popularity.desc',
+      'vote_count.gte': 50,
+      page
+    });
+  }
+
+  // Get top rated movies
+  async getTopRated(page: number = 1): Promise<TMDBSearchResponse> {
+    try {
+      const response = await axios.get(`${this.baseUrl}/movie/top_rated`, {
+        params: {
+          api_key: this.apiKey,
+          page,
+          language: 'en-US'
+        }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('TMDB get top rated error:', error);
+      throw new Error('Failed to get top rated movies');
     }
   }
 }

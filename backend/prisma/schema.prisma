@@ -18,24 +18,30 @@ model User {
   createdAt    DateTime     @default(now()) @map("created_at")
   updatedAt    DateTime     @updatedAt @map("updated_at")
 
-  userMovies   UserMovie[]
-  watchlist    Watchlist[]
+  userMovies            UserMovie[]
+  watchlist             Watchlist[]
+  preferenceWeights     UserPreferenceWeights?
+  recommendationHistory RecommendationHistory[]
 
   @@map("users")
 }
 
 model Movie {
-  id          String   @id @default(uuid())
-  tmdbId      Int      @unique @map("tmdb_id")
-  title       String
-  overview    String?
-  posterPath  String?  @map("poster_path")
-  releaseDate String?  @map("release_date")
-  genres      Json?
-  director    String?
-  cast        Json?
-  runtime     Int?
-  lastUpdated DateTime @default(now()) @map("last_updated")
+  id                   String   @id @default(uuid())
+  tmdbId               Int      @unique @map("tmdb_id")
+  title                String
+  overview             String?
+  posterPath           String?  @map("poster_path")
+  releaseDate          String?  @map("release_date")
+  genres               Json?
+  director             String?
+  cast                 Json?
+  runtime              Int?
+  keywords             Json?    // Array of { id: number, name: string }
+  collectionId         Int?     @map("collection_id")
+  collectionName       String?  @map("collection_name")
+  productionCompanies  Json?    @map("production_companies") // Array of { id: number, name: string }
+  lastUpdated          DateTime @default(now()) @map("last_updated")
 
   userMovies  UserMovie[]
   watchlist   Watchlist[]
@@ -90,4 +96,40 @@ model Watchlist {
   @@index([userId])
   @@index([movieId])
   @@map("watchlist")
+}
+
+// Per-user personalized weight multipliers for recommendation scoring
+model UserPreferenceWeights {
+  id               String   @id @default(uuid())
+  userId           String   @unique @map("user_id")
+  genreWeight      Float    @default(1.0) @map("genre_weight")
+  directorWeight   Float    @default(1.0) @map("director_weight")
+  actorWeight      Float    @default(1.0) @map("actor_weight")
+  keywordWeight    Float    @default(1.0) @map("keyword_weight")
+  popularityWeight Float    @default(1.0) @map("popularity_weight")
+  recencyWeight    Float    @default(1.0) @map("recency_weight")
+  runtimeWeight    Float    @default(1.0) @map("runtime_weight")
+  eraWeight        Float    @default(1.0) @map("era_weight")
+  lastCalculated   DateTime @default(now()) @map("last_calculated")
+  ratingCount      Int      @default(0) @map("rating_count") // Track ratings since last calculation
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_preference_weights")
+}
+
+// Track shown recommendations to avoid repetition
+model RecommendationHistory {
+  id      String   @id @default(uuid())
+  userId  String   @map("user_id")
+  tmdbId  Int      @map("tmdb_id")
+  shownAt DateTime @default(now()) @map("shown_at")
+  action  String?  // 'viewed', 'skipped', 'rated', 'watchlisted'
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tmdbId])
+  @@index([userId])
+  @@index([shownAt])
+  @@map("recommendation_history")
 }

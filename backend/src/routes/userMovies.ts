@@ -3,6 +3,7 @@ import prisma from '../config/database';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { Rating } from '@prisma/client';
 import tmdbService from '../services/tmdb';
+import weightLearningService from '../services/weightLearning';
 
 const router = express.Router();
 
@@ -64,8 +65,8 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: 'Invalid rating value. Must be one of: NOT_INTERESTED, DISLIKE, OK, LIKE, SUPER_LIKE' });
     }
 
-    // Fetch and cache movie details
-    const tmdbMovie = await tmdbService.getMovieDetails(tmdbId);
+    // Fetch and cache movie details with keywords
+    const tmdbMovie = await tmdbService.getEnhancedMovieDetails(tmdbId);
 
     const director = tmdbMovie.credits?.crew.find(
       person => person.job === 'Director'
@@ -75,6 +76,16 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
       id: actor.id,
       name: actor.name,
       character: actor.character
+    })) || [];
+
+    // Extract collection info
+    const collectionId = tmdbMovie.belongs_to_collection?.id || null;
+    const collectionName = tmdbMovie.belongs_to_collection?.name || null;
+
+    // Extract production companies (top 5)
+    const productionCompanies = tmdbMovie.production_companies?.slice(0, 5).map(c => ({
+      id: c.id,
+      name: c.name
     })) || [];
 
     // Upsert movie in database
@@ -89,6 +100,10 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
         director,
         cast,
         runtime: tmdbMovie.runtime,
+        keywords: (tmdbMovie.keywords || []) as any,
+        collectionId,
+        collectionName,
+        productionCompanies,
         lastUpdated: new Date()
       },
       create: {
@@ -100,7 +115,11 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
         genres: tmdbMovie.genres,
         director,
         cast,
-        runtime: tmdbMovie.runtime
+        runtime: tmdbMovie.runtime,
+        keywords: (tmdbMovie.keywords || []) as any,
+        collectionId,
+        collectionName,
+        productionCompanies
       }
     });
 
@@ -125,6 +144,11 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
       include: {
         movie: true
       }
+    });
+
+    // Trigger weight learning update (async, don't wait)
+    weightLearningService.onNewRating(userId).catch(err => {
+      console.error('Weight learning error:', err);
     });
 
     res.status(201).json(userMovie);
