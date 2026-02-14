@@ -32,12 +32,14 @@ model Movie {
   title                String
   overview             String?
   posterPath           String?  @map("poster_path")
+  backdropPath         String?  @map("backdrop_path")
   releaseDate          String?  @map("release_date")
   genres               Json?
   director             String?
   directorId           Int?     @map("director_id")
-  cast                 Json?
+  cast                 Json?    // Array of { id, name, character, profilePath }
   runtime              Int?
+  tagline              String?
   keywords             Json?    // Array of { id: number, name: string }
   collectionId         Int?     @map("collection_id")
   collectionName       String?  @map("collection_name")

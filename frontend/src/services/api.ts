@@ -48,19 +48,35 @@ export interface AuthResponse {
   user: User;
 }
 
+export interface CastMember {
+  id: number;
+  name: string;
+  character: string;
+  profilePath: string | null;
+}
+
+export interface TrailerInfo {
+  key: string;      // YouTube video ID
+  name: string;
+  site: string;     // "YouTube"
+}
+
 export interface Movie {
   id: string;
   tmdbId: number;
   title: string;
   overview: string | null;
   posterPath: string | null;
+  backdropPath: string | null;
   releaseDate: string | null;
   genres: { id: number; name: string }[] | null;
   director: string | null;
   directorId: number | null;
-  cast: { id: number; name: string; character: string }[] | null;
+  cast: CastMember[] | null;
   runtime: number | null;
+  tagline: string | null;
   productionCompanies: { id: number; name: string }[] | null;
+  trailer: TrailerInfo | null;
 }
 
 export type Rating = 'NOT_INTERESTED' | 'DISLIKE' | 'OK' | 'LIKE' | 'SUPER_LIKE';

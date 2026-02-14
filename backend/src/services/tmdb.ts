@@ -49,10 +49,11 @@ export interface TMDBMovie {
 export interface TMDBMovieDetails extends TMDBMovie {
   genres: { id: number; name: string }[];
   runtime: number;
+  tagline: string;
   belongs_to_collection: TMDBCollection | null;
   production_companies: TMDBProductionCompany[];
   credits?: {
-    cast: { id: number; name: string; character: string; profile_path: string | null }[];
+    cast: { id: number; name: string; character: string; profile_path: string | null; order: number }[];
     crew: { id: number; name: string; job: string; department: string }[];
   };
 }
@@ -76,6 +77,24 @@ export interface TMDBGenre {
 
 export interface TMDBGenreListResponse {
   genres: TMDBGenre[];
+}
+
+export interface TMDBVideo {
+  id: string;
+  iso_639_1: string;
+  iso_3166_1: string;
+  key: string;           // YouTube/Vimeo video key
+  name: string;
+  site: string;          // "YouTube" or "Vimeo"
+  size: number;          // 360, 480, 720, 1080
+  type: string;          // "Trailer", "Teaser", "Clip", "Featurette", etc.
+  official: boolean;
+  published_at: string;
+}
+
+export interface TMDBVideosResponse {
+  id: number;
+  results: TMDBVideo[];
 }
 
 class TMDBService {
@@ -117,6 +136,24 @@ class TMDBService {
     } catch (error) {
       console.error('TMDB get movie details error:', error);
       throw new Error('Failed to get movie details');
+    }
+  }
+
+  async getMovieVideos(tmdbId: number): Promise<TMDBVideo[]> {
+    try {
+      const response = await axios.get<TMDBVideosResponse>(
+        `${this.baseUrl}/movie/${tmdbId}/videos`,
+        {
+          params: {
+            api_key: this.apiKey,
+            language: 'en-US'
+          }
+        }
+      );
+      return response.data.results || [];
+    } catch (error) {
+      console.error('TMDB get movie videos error:', error);
+      return []; // Return empty array on error, don't break the flow
     }
   }
 

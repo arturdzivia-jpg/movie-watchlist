@@ -69,11 +69,12 @@ router.get('/:tmdbId', authenticate, async (req: AuthRequest, res: Response) => 
       const director = directorInfo?.name || null;
       const directorId = directorInfo?.id || null;
 
-      // Extract top cast members
+      // Extract top cast members with profile photos
       const cast = tmdbMovie.credits?.cast.slice(0, 10).map(actor => ({
         id: actor.id,
         name: actor.name,
-        character: actor.character
+        character: actor.character,
+        profilePath: actor.profile_path
       })) || [];
 
       // Upsert movie in database
@@ -83,12 +84,14 @@ router.get('/:tmdbId', authenticate, async (req: AuthRequest, res: Response) => 
           title: tmdbMovie.title,
           overview: tmdbMovie.overview,
           posterPath: tmdbMovie.poster_path,
+          backdropPath: tmdbMovie.backdrop_path,
           releaseDate: tmdbMovie.release_date,
           genres: tmdbMovie.genres,
           director,
           directorId,
           cast,
           runtime: tmdbMovie.runtime,
+          tagline: tmdbMovie.tagline || null,
           lastUpdated: new Date()
         },
         create: {
@@ -96,17 +99,38 @@ router.get('/:tmdbId', authenticate, async (req: AuthRequest, res: Response) => 
           title: tmdbMovie.title,
           overview: tmdbMovie.overview,
           posterPath: tmdbMovie.poster_path,
+          backdropPath: tmdbMovie.backdrop_path,
           releaseDate: tmdbMovie.release_date,
           genres: tmdbMovie.genres,
           director,
           directorId,
           cast,
-          runtime: tmdbMovie.runtime
+          runtime: tmdbMovie.runtime,
+          tagline: tmdbMovie.tagline || null
         }
       });
     }
 
-    res.json(movie);
+    // Fetch videos (don't cache - trailers can be added/updated)
+    const videos = await tmdbService.getMovieVideos(tmdbIdNum);
+
+    // Find the best trailer (prefer official YouTube trailers)
+    const trailer = videos.find(
+      v => v.site === 'YouTube' && v.type === 'Trailer' && v.official
+    ) || videos.find(
+      v => v.site === 'YouTube' && v.type === 'Trailer'
+    ) || videos.find(
+      v => v.site === 'YouTube' && v.type === 'Teaser'
+    ) || null;
+
+    res.json({
+      ...movie,
+      trailer: trailer ? {
+        key: trailer.key,
+        name: trailer.name,
+        site: trailer.site
+      } : null
+    });
   } catch (error) {
     console.error('Get movie details error:', error);
     res.status(500).json({ error: 'Failed to get movie details' });
