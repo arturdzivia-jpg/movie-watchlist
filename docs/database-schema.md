@@ -89,11 +89,18 @@ updatedAt: "2024-01-15T10:30:00.000Z"
 | title | String | NOT NULL | Movie title |
 | overview | String | NULLABLE | Movie synopsis |
 | posterPath | String | NULLABLE | TMDB poster image path |
+| backdropPath | String | NULLABLE | TMDB backdrop image path (for modal header) |
 | releaseDate | String | NULLABLE | Release date (YYYY-MM-DD) |
 | genres | JSON | NULLABLE | Array of genre objects |
 | director | String | NULLABLE | Director name |
-| cast | JSON | NULLABLE | Array of cast objects |
+| directorId | Integer | NULLABLE | TMDB director person ID |
+| cast | JSON | NULLABLE | Array of cast objects with profile photos |
 | runtime | Integer | NULLABLE | Runtime in minutes |
+| tagline | String | NULLABLE | Movie tagline |
+| keywords | JSON | NULLABLE | Array of keyword objects |
+| collectionId | Integer | NULLABLE | TMDB collection/franchise ID |
+| collectionName | String | NULLABLE | Collection/franchise name |
+| productionCompanies | JSON | NULLABLE | Array of production company objects |
 | lastUpdated | DateTime | DEFAULT now() | Cache timestamp |
 
 **Indexes:**
@@ -120,8 +127,24 @@ updatedAt: "2024-01-15T10:30:00.000Z"
   {
     "id": 3223,
     "name": "Robert Downey Jr.",
-    "character": "Tony Stark"
+    "character": "Tony Stark",
+    "profilePath": "/5qHNjhtjMD4YWH3UP0rm4tKwxCL.jpg"
   }
+]
+```
+
+**Keywords:**
+```json
+[
+  { "id": 9715, "name": "superhero" },
+  { "id": 180547, "name": "marvel cinematic universe" }
+]
+```
+
+**Production Companies:**
+```json
+[
+  { "id": 420, "name": "Marvel Studios" }
 ]
 ```
 
@@ -137,11 +160,18 @@ tmdbId: 299536
 title: "Avengers: Infinity War"
 overview: "As the Avengers and their allies..."
 posterPath: "/7WsyChQLEftFiDOVTGkv3hFpyyt.jpg"
+backdropPath: "/bOGkgRGdhrBYJSLpXaxhXVstddV.jpg"
 releaseDate: "2018-04-25"
 genres: [{"id": 12, "name": "Adventure"}, ...]
 director: "Anthony Russo"
-cast: [{"id": 3223, "name": "Robert Downey Jr.", ...}, ...]
+directorId: 19272
+cast: [{"id": 3223, "name": "Robert Downey Jr.", "character": "Tony Stark", "profilePath": "/5qHN..."}, ...]
 runtime: 149
+tagline: "An entire universe. Once and for all."
+keywords: [{"id": 9715, "name": "superhero"}, ...]
+collectionId: 86311
+collectionName: "The Avengers Collection"
+productionCompanies: [{"id": 420, "name": "Marvel Studios"}]
 lastUpdated: "2024-01-15T10:30:00.000Z"
 ```
 

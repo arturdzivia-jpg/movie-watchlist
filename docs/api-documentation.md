@@ -263,6 +263,7 @@ GET /api/movies/299536
   "title": "Avengers: Infinity War",
   "overview": "As the Avengers and their allies...",
   "posterPath": "/7WsyChQLEftFiDOVTGkv3hFpyyt.jpg",
+  "backdropPath": "/bOGkgRGdhrBYJSLpXaxhXVstddV.jpg",
   "releaseDate": "2018-04-25",
   "genres": [
     { "id": 12, "name": "Adventure" },
@@ -271,22 +272,40 @@ GET /api/movies/299536
     { "id": 28, "name": "Action" }
   ],
   "director": "Anthony Russo",
+  "directorId": 19272,
   "cast": [
     {
       "id": 3223,
       "name": "Robert Downey Jr.",
-      "character": "Tony Stark / Iron Man"
+      "character": "Tony Stark / Iron Man",
+      "profilePath": "/5qHNjhtjMD4YWH3UP0rm4tKwxCL.jpg"
     },
     {
       "id": 16828,
       "name": "Chris Hemsworth",
-      "character": "Thor Odinson"
+      "character": "Thor Odinson",
+      "profilePath": "/jpurJ9jAcLCYjgHHfYF32m3zJYm.jpg"
     }
   ],
   "runtime": 149,
+  "tagline": "An entire universe. Once and for all.",
+  "productionCompanies": [
+    { "id": 420, "name": "Marvel Studios" }
+  ],
+  "trailer": {
+    "key": "6ZfuNTqbHE8",
+    "name": "Official Trailer",
+    "site": "YouTube"
+  },
   "lastUpdated": "2024-01-15T10:30:00.000Z"
 }
 ```
+
+**Notes:**
+- `backdropPath`: Full-width backdrop image for modal header
+- `cast[].profilePath`: Actor portrait photo path (use with TMDB image URL)
+- `tagline`: Movie tagline displayed below title
+- `trailer`: YouTube trailer info (fetched fresh, not cached)
 
 **Error Responses:**
 

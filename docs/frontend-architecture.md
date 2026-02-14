@@ -33,7 +33,8 @@ frontend/
 │   │   │   └── CardDetails.tsx    # Back of flipped card
 │   │   ├── Movies/
 │   │   │   ├── MovieCard.tsx      # Movie display card (search results)
-│   │   │   └── UserMovieCard.tsx  # User's rated movie card
+│   │   │   ├── UserMovieCard.tsx  # User's rated movie card
+│   │   │   └── MovieDetailModal.tsx # Enhanced movie detail modal with trailers
 │   │   ├── Layout.tsx             # Main app layout with nav
 │   │   └── ProtectedRoute.tsx     # Auth route wrapper
 │   ├── context/
@@ -178,6 +179,41 @@ frontend/
   onDelete?: (id) => void;
 }
 ```
+
+#### MovieDetailModal (`src/components/Movies/MovieDetailModal.tsx`)
+
+**Purpose:** Display full movie details in an enhanced modal dialog
+
+**Features:**
+- Backdrop header image with gradient fade
+- Cast portraits section with circular actor photos (horizontal scroll)
+- Embedded YouTube trailer with thumbnail preview and play button
+- Movie tagline display
+- Clickable metadata (genres, actors, directors, studios)
+- Rating buttons and watchlist management
+- Bottom sheet on mobile, centered modal on desktop
+- Larger modal size (max-w-4xl / 1024px)
+
+**Props:**
+```typescript
+{
+  movie: TMDBMovie | Movie;
+  tmdbId?: number;
+  userRating?: Rating | null;
+  isInWatchlist?: boolean;
+  onClose: () => void;
+  onRate?: (rating: Rating) => void;
+  onAddToWatchlist?: () => void;
+  onRemoveFromWatchlist?: () => void;
+  onUpdateRating?: (rating: Rating) => void;
+  onDelete?: () => void;
+  isProcessing?: boolean;
+}
+```
+
+**Data Fetched:**
+- Full movie details from `/api/movies/:tmdbId`
+- Includes cast with profile photos, trailer info, backdrop, tagline
 
 ### 6. Protected Route
 
@@ -688,7 +724,7 @@ The following mobile-responsive features are implemented:
 - `Layout.tsx` - Mobile hamburger menu with dropdown
 - `SwipeCardStack.tsx` - Viewport-based height (65-70vh), full-height poster with gradient overlay
 - `SwipeCard.tsx` - Full-height movie poster with gradient text overlay at bottom
-- `MovieDetailModal.tsx` - Bottom sheet on mobile, centered on desktop
+- `MovieDetailModal.tsx` - Enhanced modal with backdrop header, cast portraits with photos, embedded YouTube trailers, tagline display. Bottom sheet on mobile, centered on desktop (max-w-4xl)
 - `FilterBar.tsx` - Stacked controls on mobile, optional `hideStyleFilter` prop for swipe mode
 - `SwipeControls.tsx` - Larger touch targets (56px on mobile), triggers animated card transitions
 
