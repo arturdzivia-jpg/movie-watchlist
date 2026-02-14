@@ -77,6 +77,16 @@ const ENRICHMENT_LIMIT = 50;
 const ENRICHMENT_BATCH_SIZE = 10;
 const RECENTLY_SHOWN_DAYS = 7;
 const RECENTLY_SHOWN_PENALTY = 0.3; // 30% penalty
+const SKIP_PATTERN_DAYS = 30; // Analyze skips from last 30 days
+const SKIP_GENRE_PENALTY_PER_SKIP = 0.05; // 5% per skip
+const SKIP_GENRE_PENALTY_MAX = 0.25; // Max 25% penalty
+const SKIP_ACTOR_PENALTY_PER_SKIP = 0.03; // 3% per skip
+const SKIP_ACTOR_PENALTY_MAX = 0.15; // Max 15% penalty
+
+interface SkipPatterns {
+  skippedGenres: Map<number, number>;  // genreId -> skip count
+  skippedActors: Map<number, number>;  // actorId -> skip count
+}
 
 // Helper: Fisher-Yates shuffle
 function shuffleArray<T>(array: T[]): T[] {
@@ -170,6 +180,59 @@ class RecommendationService {
         })
       )
     );
+  }
+
+  /**
+   * Analyze skipped movies to identify patterns (genres/actors to penalize)
+   * This enables the feedback loop: users who skip action movies repeatedly
+   * will see fewer action movies recommended.
+   */
+  private async getSkipPatterns(userId: string): Promise<SkipPatterns> {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - SKIP_PATTERN_DAYS);
+
+    // Get all skipped movies from recommendation history
+    const skipped = await prisma.recommendationHistory.findMany({
+      where: {
+        userId,
+        action: 'skipped',
+        shownAt: { gte: cutoff }
+      },
+      select: { tmdbId: true }
+    });
+
+    const skippedGenres = new Map<number, number>();
+    const skippedActors = new Map<number, number>();
+
+    if (skipped.length === 0) {
+      return { skippedGenres, skippedActors };
+    }
+
+    // Get movie details for skipped movies from our cache
+    const movies = await prisma.movie.findMany({
+      where: { tmdbId: { in: skipped.map(s => s.tmdbId) } },
+      select: { genres: true, cast: true }
+    });
+
+    for (const movie of movies) {
+      // Count skipped genres
+      const genres = movie.genres as { id: number }[] | null;
+      if (genres) {
+        for (const g of genres) {
+          skippedGenres.set(g.id, (skippedGenres.get(g.id) || 0) + 1);
+        }
+      }
+
+      // Count skipped actors (top 3 only - lead actors)
+      const cast = (movie.cast as { id: number }[] | null)?.slice(0, 3);
+      if (cast) {
+        for (const a of cast) {
+          skippedActors.set(a.id, (skippedActors.get(a.id) || 0) + 1);
+        }
+      }
+    }
+
+    return { skippedGenres, skippedActors };
   }
 
   /**
@@ -321,6 +384,9 @@ class RecommendationService {
     // Get recently shown recommendations
     const recentlyShownIds = await this.getRecentlyShownIds(userId);
 
+    // Get skip patterns for feedback-based penalties
+    const skipPatterns = await this.getSkipPatterns(userId);
+
     // Get user's already rated movies (to exclude)
     const ratedMovies = await prisma.userMovie.findMany({
       where: { userId },
@@ -428,7 +494,7 @@ class RecommendationService {
     // Score all candidates
     const allCandidates = [...enrichedCandidates, ...remainingCandidates];
     let scoredMovies = allCandidates.map(movie =>
-      this.scoreMovie(movie, preferences, weights, recentlyShownIds)
+      this.scoreMovie(movie, preferences, weights, recentlyShownIds, skipPatterns)
     );
 
     // Calculate exploration and hidden gems slots
@@ -516,7 +582,8 @@ class RecommendationService {
     movie: TMDBMovie,
     preferences: EnhancedUserPreferences,
     weights: UserWeights,
-    recentlyShownIds: Set<number>
+    recentlyShownIds: Set<number>,
+    skipPatterns: SkipPatterns
   ): ScoredMovie {
     let score = 0;
     const reasons: string[] = [];
@@ -702,6 +769,28 @@ class RecommendationService {
     // Recently shown penalty
     if (recentlyShownIds.has(movie.id)) {
       score *= (1 - RECENTLY_SHOWN_PENALTY);
+    }
+
+    // Skip pattern penalties (feedback loop)
+    // Penalize movies with genres that user frequently skips
+    for (const genreId of movieGenreIds) {
+      const skipCount = skipPatterns.skippedGenres.get(genreId) || 0;
+      if (skipCount > 0) {
+        const penalty = Math.min(skipCount * SKIP_GENRE_PENALTY_PER_SKIP, SKIP_GENRE_PENALTY_MAX);
+        score *= (1 - penalty);
+      }
+    }
+
+    // Penalize movies with actors that user frequently skips
+    if (movie.cast && movie.cast.length > 0) {
+      const movieActorIds = movie.cast.slice(0, 3).map(a => a.id);
+      for (const actorId of movieActorIds) {
+        const skipCount = skipPatterns.skippedActors.get(actorId) || 0;
+        if (skipCount > 0) {
+          const penalty = Math.min(skipCount * SKIP_ACTOR_PENALTY_PER_SKIP, SKIP_ACTOR_PENALTY_MAX);
+          score *= (1 - penalty);
+        }
+      }
     }
 
     // Rating style adjustment

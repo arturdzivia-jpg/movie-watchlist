@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(npx prisma migrate dev:*)",
+      "Bash(npm run prisma:migrate:*)",
+      "Bash(npm install:*)",
+      "Bash(npx prisma@5 migrate dev:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run build:*)",
+      "Bash(./node_modules/.bin/tsc:*)",
+      "Bash(node node_modules/typescript/bin/tsc:*)",
+      "Bash(npx prisma generate:*)",
+      "Bash(git rm:*)",
+      "Bash(npx prisma db push:*)"
+    ]
+  }
+}

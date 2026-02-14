@@ -103,6 +103,23 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
       console.error('Weight learning error:', err);
     });
 
+    // Update recommendation history if this was a recommended movie (feedback loop)
+    // This tracks which recommendations led to ratings for future algorithm improvements
+    prisma.recommendationHistory.updateMany({
+      where: {
+        userId,
+        tmdbId: tmdbIdValidation.value!,
+        action: { not: 'rated' }  // Don't overwrite if already marked as rated
+      },
+      data: {
+        action: 'rated',
+        ratingGiven: ratingValidation.value!
+      }
+    }).catch(err => {
+      // Non-critical - don't fail the rating operation
+      console.error('Failed to update recommendation history:', err);
+    });
+
     res.status(201).json(userMovie);
   } catch (error) {
     console.error('Add user movie error:', error);

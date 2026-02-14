@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { DiscoverMovie, DiscoverCategory, Rating, discoverAPI, userMoviesAPI, watchlistAPI, DiscoverFilters } from '../services/api';
+import { DiscoverMovie, DiscoverCategory, Rating, discoverAPI, userMoviesAPI, watchlistAPI, recommendationsAPI, DiscoverFilters } from '../services/api';
 import { SwipeDirection, SwipeAction, SwipeSessionStats, RatingModalState, UseSwipeDiscoverReturn } from '../types/discover';
 
 const PREFETCH_THRESHOLD = 10;
@@ -131,10 +131,15 @@ export const useSwipeDiscover = (category: DiscoverCategory = 'for_you', filters
 
       const movie = cardStack[0];
 
-      // Skip is handled separately (no API call)
+      // Skip is handled separately
       if (direction === 'down') {
         setCardStack((prev) => prev.slice(1));
         updateStats('skipped', 1);
+
+        // Track skip action in backend (fire and forget - don't block UI)
+        recommendationsAPI.recordAction(movie.id, 'skipped').catch((err) => {
+          console.error('Failed to record skip action:', err);
+        });
 
         // Add to undo history (skip actions can be undone locally)
         const swipeAction: SwipeAction = {
@@ -161,12 +166,16 @@ export const useSwipeDiscover = (category: DiscoverCategory = 'for_you', filters
           apiRecordId = response.data.id;
           action = 'WATCHLIST';
           updateStats('wantToWatch', 1);
+          // Track watchlist action (fire and forget)
+          recommendationsAPI.recordAction(movie.id, 'watchlisted').catch(console.error);
         } else {
           // Mark as not interested (left swipe)
           const response = await userMoviesAPI.add(movie.id, 'NOT_INTERESTED', false);
           apiRecordId = response.data.id;
           action = 'NOT_INTERESTED';
           updateStats('notInterested', 1);
+          // Track not_interested action (fire and forget)
+          recommendationsAPI.recordAction(movie.id, 'not_interested').catch(console.error);
         }
 
         // Add to undo history

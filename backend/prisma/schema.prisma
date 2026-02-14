@@ -121,18 +121,21 @@ model UserPreferenceWeights {
   @@map("user_preference_weights")
 }
 
-// Track shown recommendations to avoid repetition
+// Track shown recommendations to avoid repetition and enable feedback loop
 model RecommendationHistory {
-  id      String   @id @default(uuid())
-  userId  String   @map("user_id")
-  tmdbId  Int      @map("tmdb_id")
-  shownAt DateTime @default(now()) @map("shown_at")
-  action  String?  // 'viewed', 'skipped', 'rated', 'watchlisted'
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  tmdbId      Int      @map("tmdb_id")
+  shownAt     DateTime @default(now()) @map("shown_at")
+  action      String?  // 'viewed', 'skipped', 'rated', 'watchlisted', 'not_interested'
+  scoreAtShow Float?   @map("score_at_show") // Algorithm confidence score when shown
+  ratingGiven String?  @map("rating_given")  // Rating if user rated: SUPER_LIKE, LIKE, OK, DISLIKE
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, tmdbId])
   @@index([userId])
   @@index([shownAt])
+  @@index([action])
   @@map("recommendation_history")
 }

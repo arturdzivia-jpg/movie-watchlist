@@ -277,6 +277,9 @@ export const watchlistAPI = {
     api.post(`/api/watchlist/${id}/watched`, { rating })
 };
 
+// Recommendation action types for tracking user interactions
+export type RecommendationAction = 'viewed' | 'skipped' | 'rated' | 'watchlisted' | 'not_interested';
+
 // Recommendations API
 export const recommendationsAPI = {
   get: (limit = 20) =>
@@ -285,7 +288,10 @@ export const recommendationsAPI = {
     }),
 
   getPreferences: () =>
-    api.get<UserPreferences>('/api/recommendations/preferences')
+    api.get<UserPreferences>('/api/recommendations/preferences'),
+
+  recordAction: (tmdbId: number, action: RecommendationAction) =>
+    api.post<{ success: boolean }>('/api/recommendations/action', { tmdbId, action })
 };
 
 // Discover API

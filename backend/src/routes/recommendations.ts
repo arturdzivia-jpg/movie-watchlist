@@ -2,6 +2,9 @@ import express, { Response } from 'express';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import recommendationService from '../services/recommendation';
 import userPreferencesService from '../services/userPreferences';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 const router = express.Router();
 
@@ -71,6 +74,41 @@ router.get('/moods', authenticate, async (_req: AuthRequest, res: Response) => {
       { id: 'romantic', name: 'Romantic', description: 'Romance, Drama' }
     ]
   });
+});
+
+// Valid action types for tracking user interactions with recommendations
+const VALID_ACTIONS = ['viewed', 'skipped', 'rated', 'watchlisted', 'not_interested'] as const;
+type RecommendationAction = typeof VALID_ACTIONS[number];
+
+// Record user action on a recommendation (skip, watchlist, etc.)
+router.post('/action', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user!.userId;
+    const { tmdbId, action } = req.body;
+
+    // Validate required fields
+    if (!tmdbId || typeof tmdbId !== 'number') {
+      return res.status(400).json({ error: 'tmdbId is required and must be a number' });
+    }
+
+    // Validate action type
+    if (!action || !VALID_ACTIONS.includes(action as RecommendationAction)) {
+      return res.status(400).json({
+        error: `Invalid action type. Must be one of: ${VALID_ACTIONS.join(', ')}`
+      });
+    }
+
+    await prisma.recommendationHistory.upsert({
+      where: { userId_tmdbId: { userId, tmdbId } },
+      update: { action, shownAt: new Date() },
+      create: { userId, tmdbId, action, shownAt: new Date() }
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Record action error:', error);
+    res.status(500).json({ error: 'Failed to record action' });
+  }
 });
 
 export default router;

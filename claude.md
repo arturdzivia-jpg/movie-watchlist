@@ -919,6 +919,7 @@ The following features are already implemented in the codebase:
 - **View Mode Toggle:** My Movies supports both list and grid views (persisted to localStorage)
 - **Movie Detail Modal:** Enhanced modal with backdrop header image, cast portraits with photos, embedded YouTube trailers, movie tagline, and clickable metadata (genres, actors, directors, studios)
 - **Swipe Discovery:** Tinder-like card swiping with full-height poster cards, gradient overlay for text, and animated transitions for all actions (drag, buttons, keyboard)
+- **Already Rated Indicator:** Discovery page cards show "In My Movies" badge and highlighted rating button for movies already in user's collection
 - **Clickable Metadata:** Genres, actors, directors, and studios are clickable links throughout the app. Clicking navigates to the Discover page filtered by that item:
   - **In Movie Detail Modal:** Click genre badges, director name, actor names, or studio names
   - **In My Movies:** Click genre badges on movie cards
