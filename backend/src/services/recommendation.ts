@@ -78,23 +78,6 @@ const ENRICHMENT_BATCH_SIZE = 10;
 const RECENTLY_SHOWN_DAYS = 7;
 const RECENTLY_SHOWN_PENALTY = 0.3; // 30% penalty
 
-// Keywords to exclude from "Themes you enjoy" reasons
-// These are structural/generic keywords that don't indicate meaningful preference
-const BLOCKED_KEYWORDS_FOR_REASONS = new Set([
-  'sequel', 'prequel', 'remake', 'reboot', 'spin-off', 'spinoff',
-  'based on novel', 'based on novel or book', 'based on comic', 'based on true story',
-  'romantic', 'romance', 'love', 'relationship',  // Too vague - almost every movie has some romance
-  'death', 'murder', 'violence',  // Too common
-  'friendship', 'family',  // Too common
-  'suspenseful', 'suspense', 'twist ending',  // Describes style, not theme
-  'flashback', 'nonlinear timeline',
-  'independent film', 'cult film',
-  'anime', 'animation',  // Already covered by genres
-  'female protagonist', 'male protagonist',
-  'aftercreditsstinger', 'duringcreditsstinger',
-  'musical', 'soundtrack'  // Style, not theme
-]);
-
 // Helper: Fisher-Yates shuffle
 function shuffleArray<T>(array: T[]): T[] {
   const shuffled = [...array];
@@ -576,6 +559,8 @@ class RecommendationService {
     }
 
     // ===== KEYWORD MATCHING =====
+    // Keywords are used for scoring only, NOT for display reasons
+    // (TMDB keywords are too inconsistent/meaningless for user-facing text)
     if (movie.keywords && preferences.preferredKeywords.length > 0) {
       const movieKeywordIds = new Set((movie.keywords as TMDBKeyword[]).map(k => k.id));
       const matchingKeywords = preferences.preferredKeywords
@@ -584,18 +569,10 @@ class RecommendationService {
       if (matchingKeywords.length > 0) {
         let keywordScore = 0;
         for (const kw of matchingKeywords) {
-          keywordScore += Math.min(kw.count, 5); // Cap individual keyword contribution
+          keywordScore += Math.min(kw.count, 5);
         }
         score += Math.min(keywordScore, weights.keyword);
-
-        // Filter out generic/structural keywords for display reasons
-        const meaningfulKeywords = matchingKeywords.filter(
-          k => !BLOCKED_KEYWORDS_FOR_REASONS.has(k.name.toLowerCase())
-        );
-
-        if (meaningfulKeywords.length >= 2) {
-          specificReasons.push(`Themes you enjoy: ${meaningfulKeywords.slice(0, 2).map(k => k.name).join(', ')}`);
-        }
+        // No reason added - keywords are too unreliable for display
       }
     }
 
@@ -646,6 +623,8 @@ class RecommendationService {
     }
 
     // ===== PRODUCTION COMPANY MATCHING =====
+    // Used for scoring only - most users don't care about studios
+    // (Exception could be made for distinctive studios like A24, Pixar, Studio Ghibli)
     if (movie.production_companies && preferences.likedProductionCompanies.length > 0) {
       const movieCompanyIds = new Set(movie.production_companies.map(c => c.id));
       const matchingCompany = preferences.likedProductionCompanies.find(
@@ -658,7 +637,7 @@ class RecommendationService {
           10
         );
         score += companyScore;
-        specificReasons.push(`From ${matchingCompany.name}`);
+        // No reason added - most people don't care about production companies
       }
     }
 
