@@ -84,15 +84,15 @@ const MovieDetailModal: React.FC<MovieDetailModalProps> = memo(({
   const [fullDetails, setFullDetails] = useState<Movie | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showTrailer, setShowTrailer] = useState(false);
+  const [currentTmdbId, setCurrentTmdbId] = useState<number | null>(null);
+  const contentRef = React.useRef<HTMLDivElement>(null);
 
-  // Determine if we already have full details
-  const hasFullDetails = !isTMDBMovie(movie) && movie.director !== undefined;
-
-  // Fetch full details if needed
+  // Always fetch fresh details from API to ensure we have complete cast info with photos
   useEffect(() => {
     const fetchDetails = async () => {
-      const id = tmdbId || getTmdbId(movie);
-      if (id && !hasFullDetails) {
+      // Use currentTmdbId if set (from similar movie click), otherwise use props
+      const id = currentTmdbId || tmdbId || getTmdbId(movie);
+      if (id) {
         setIsLoading(true);
         try {
           const response = await moviesAPI.getDetails(id);
@@ -105,7 +105,16 @@ const MovieDetailModal: React.FC<MovieDetailModalProps> = memo(({
       }
     };
     fetchDetails();
-  }, [movie, tmdbId, hasFullDetails]);
+  }, [movie, tmdbId, currentTmdbId]);
+
+  // Handle clicking a similar movie
+  const handleSimilarMovieClick = (similarTmdbId: number) => {
+    setCurrentTmdbId(similarTmdbId);
+    setFullDetails(null); // Clear current details to show loading state
+    setShowTrailer(false);
+    // Scroll to top of modal content
+    contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   // Reset trailer state when movie changes
   useEffect(() => {
@@ -128,6 +137,9 @@ const MovieDetailModal: React.FC<MovieDetailModalProps> = memo(({
     };
   }, [handleKeyDown]);
 
+  // Check if we're viewing a similar movie (not the original)
+  const isViewingSimilarMovie = currentTmdbId !== null;
+
   // Use full details if available, otherwise fall back to passed movie
   const displayMovie = fullDetails || movie;
   const title = displayMovie.title;
@@ -137,15 +149,15 @@ const MovieDetailModal: React.FC<MovieDetailModalProps> = memo(({
   const overview = getOverview(displayMovie);
   const voteAverage = fullDetails ? 0 : getVoteAverage(displayMovie);
 
-  // Full details fields
-  const runtime = fullDetails?.runtime || (!isTMDBMovie(movie) ? movie.runtime : null);
-  const director = fullDetails?.director || (!isTMDBMovie(movie) ? movie.director : null);
-  const directorId = fullDetails?.directorId || (!isTMDBMovie(movie) ? movie.directorId : null);
-  const cast = fullDetails?.cast || (!isTMDBMovie(movie) ? movie.cast : null);
-  const genres = fullDetails?.genres || (!isTMDBMovie(movie) ? movie.genres : null);
-  const productionCompanies = fullDetails?.productionCompanies || (!isTMDBMovie(movie) ? movie.productionCompanies : null);
-  const tagline = fullDetails?.tagline || (!isTMDBMovie(movie) ? (movie as Movie).tagline : null);
-  const trailer = fullDetails?.trailer || (!isTMDBMovie(movie) ? (movie as Movie).trailer : null);
+  // Full details fields - when viewing similar movie, only use fullDetails (don't fall back to original movie)
+  const runtime = fullDetails?.runtime || (!isViewingSimilarMovie && !isTMDBMovie(movie) ? movie.runtime : null);
+  const director = fullDetails?.director || (!isViewingSimilarMovie && !isTMDBMovie(movie) ? movie.director : null);
+  const directorId = fullDetails?.directorId || (!isViewingSimilarMovie && !isTMDBMovie(movie) ? movie.directorId : null);
+  const cast = fullDetails?.cast || (!isViewingSimilarMovie && !isTMDBMovie(movie) ? movie.cast : null);
+  const genres = fullDetails?.genres || (!isViewingSimilarMovie && !isTMDBMovie(movie) ? movie.genres : null);
+  const productionCompanies = fullDetails?.productionCompanies || (!isViewingSimilarMovie && !isTMDBMovie(movie) ? movie.productionCompanies : null);
+  const tagline = fullDetails?.tagline || (!isViewingSimilarMovie && !isTMDBMovie(movie) ? (movie as Movie).tagline : null);
+  const trailer = fullDetails?.trailer || (!isViewingSimilarMovie && !isTMDBMovie(movie) ? (movie as Movie).trailer : null);
   const watchProviders = fullDetails?.watchProviders;
   const similarMovies = fullDetails?.similarMovies;
 
@@ -177,7 +189,7 @@ const MovieDetailModal: React.FC<MovieDetailModalProps> = memo(({
         </button>
 
         {/* Content */}
-        <div className="overflow-y-auto max-h-[90vh] scrollbar-hide">
+        <div ref={contentRef} className="overflow-y-auto max-h-[90vh] scrollbar-hide">
           {/* Backdrop Header */}
           {backdropUrl && (
             <div className="relative h-32 sm:h-40 md:h-48">
@@ -476,13 +488,17 @@ const MovieDetailModal: React.FC<MovieDetailModalProps> = memo(({
               <h3 className="text-lg font-semibold text-white mb-3">Similar Movies</h3>
               <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
                 {similarMovies.map((similar) => (
-                  <div key={similar.id} className="flex-shrink-0 w-24 sm:w-28">
-                    <div className="bg-slate-700 rounded-lg overflow-hidden aspect-[2/3]">
+                  <button
+                    key={similar.id}
+                    onClick={() => handleSimilarMovieClick(similar.id)}
+                    className="flex-shrink-0 w-24 sm:w-28 text-left group"
+                  >
+                    <div className="bg-slate-700 rounded-lg overflow-hidden aspect-[2/3] group-hover:ring-2 group-hover:ring-blue-500 transition-all">
                       {similar.posterPath ? (
                         <img
                           src={`https://image.tmdb.org/t/p/w185${similar.posterPath}`}
                           alt={similar.title}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                           onError={(e) => {
                             e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="185" height="278"%3E%3Crect fill="%23334155" width="185" height="278"/%3E%3C/svg%3E';
                           }}
@@ -493,13 +509,13 @@ const MovieDetailModal: React.FC<MovieDetailModalProps> = memo(({
                         </div>
                       )}
                     </div>
-                    <p className="text-xs text-slate-300 mt-1 line-clamp-2">{similar.title}</p>
+                    <p className="text-xs text-slate-300 group-hover:text-blue-400 mt-1 line-clamp-2 transition-colors">{similar.title}</p>
                     {similar.voteAverage > 0 && (
                       <p className="text-xs text-yellow-400">
                         &#9733; {similar.voteAverage.toFixed(1)}
                       </p>
                     )}
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
@@ -507,90 +523,112 @@ const MovieDetailModal: React.FC<MovieDetailModalProps> = memo(({
 
           {/* Actions */}
           <div className="px-4 sm:px-6 pb-6 border-t border-slate-700 pt-4">
-            {/* User has already rated this movie */}
-            {userRating && userRating !== 'NOT_INTERESTED' ? (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-400">Your rating:</span>
-                  <div className="flex items-center gap-3">
-                    <select
-                      value={userRating}
-                      onChange={(e) => onUpdateRating?.(e.target.value as Rating)}
-                      disabled={isProcessing}
-                      className="bg-slate-700 text-white px-4 py-2 rounded-lg border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
+            {/* Back button when viewing similar movie */}
+            {isViewingSimilarMovie && (
+              <button
+                onClick={() => {
+                  setCurrentTmdbId(null);
+                  setFullDetails(null);
+                  setShowTrailer(false);
+                }}
+                className="w-full px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Back to {movie.title}
+              </button>
+            )}
+
+            {/* Original movie actions - only show when not viewing similar movie */}
+            {!isViewingSimilarMovie && (
+              <>
+                {/* User has already rated this movie */}
+                {userRating && userRating !== 'NOT_INTERESTED' ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400">Your rating:</span>
+                      <div className="flex items-center gap-3">
+                        <select
+                          value={userRating}
+                          onChange={(e) => onUpdateRating?.(e.target.value as Rating)}
+                          disabled={isProcessing}
+                          className="bg-slate-700 text-white px-4 py-2 rounded-lg border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          {ratingButtons.map(btn => (
+                            <option key={btn.rating} value={btn.rating}>
+                              {btn.emoji} {btn.label}
+                            </option>
+                          ))}
+                        </select>
+                        {onDelete && (
+                          <button
+                            onClick={onDelete}
+                            disabled={isProcessing}
+                            className="px-4 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded-lg transition-colors disabled:opacity-50"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : isInWatchlist ? (
+                  /* In watchlist - show rating buttons to mark as watched */
+                  <div className="space-y-4">
+                    <p className="text-slate-400 text-sm">In your watchlist - rate to mark as watched:</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                       {ratingButtons.map(btn => (
-                        <option key={btn.rating} value={btn.rating}>
-                          {btn.emoji} {btn.label}
-                        </option>
+                        <button
+                          key={btn.rating}
+                          onClick={() => onRate?.(btn.rating)}
+                          disabled={isProcessing}
+                          className={`${btn.bgColor} text-white px-3 py-3 sm:py-3 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex flex-col items-center gap-1 min-h-[56px] sm:min-h-[48px]`}
+                        >
+                          <span className="text-lg">{btn.emoji}</span>
+                          <span>{btn.label}</span>
+                        </button>
                       ))}
-                    </select>
-                    {onDelete && (
+                    </div>
+                    {onRemoveFromWatchlist && (
                       <button
-                        onClick={onDelete}
+                        onClick={onRemoveFromWatchlist}
                         disabled={isProcessing}
-                        className="px-4 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded-lg transition-colors disabled:opacity-50"
+                        className="w-full px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg transition-colors disabled:opacity-50"
                       >
-                        Remove
+                        Remove from Watchlist
                       </button>
                     )}
                   </div>
-                </div>
-              </div>
-            ) : isInWatchlist ? (
-              /* In watchlist - show rating buttons to mark as watched */
-              <div className="space-y-4">
-                <p className="text-slate-400 text-sm">In your watchlist - rate to mark as watched:</p>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {ratingButtons.map(btn => (
-                    <button
-                      key={btn.rating}
-                      onClick={() => onRate?.(btn.rating)}
-                      disabled={isProcessing}
-                      className={`${btn.bgColor} text-white px-3 py-3 sm:py-3 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex flex-col items-center gap-1 min-h-[56px] sm:min-h-[48px]`}
-                    >
-                      <span className="text-lg">{btn.emoji}</span>
-                      <span>{btn.label}</span>
-                    </button>
-                  ))}
-                </div>
-                {onRemoveFromWatchlist && (
-                  <button
-                    onClick={onRemoveFromWatchlist}
-                    disabled={isProcessing}
-                    className="w-full px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg transition-colors disabled:opacity-50"
-                  >
-                    Remove from Watchlist
-                  </button>
+                ) : (
+                  /* Not rated, not in watchlist - show all options */
+                  <div className="space-y-4">
+                    <p className="text-slate-400 text-sm">Rate this movie:</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {ratingButtons.map(btn => (
+                        <button
+                          key={btn.rating}
+                          onClick={() => onRate?.(btn.rating)}
+                          disabled={isProcessing}
+                          className={`${btn.bgColor} text-white px-3 py-3 sm:py-3 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex flex-col items-center gap-1 min-h-[56px] sm:min-h-[48px]`}
+                        >
+                          <span className="text-lg">{btn.emoji}</span>
+                          <span>{btn.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                    {onAddToWatchlist && (
+                      <button
+                        onClick={onAddToWatchlist}
+                        disabled={isProcessing}
+                        className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+                      >
+                        + Add to Watchlist
+                      </button>
+                    )}
+                  </div>
                 )}
-              </div>
-            ) : (
-              /* Not rated, not in watchlist - show all options */
-              <div className="space-y-4">
-                <p className="text-slate-400 text-sm">Rate this movie:</p>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {ratingButtons.map(btn => (
-                    <button
-                      key={btn.rating}
-                      onClick={() => onRate?.(btn.rating)}
-                      disabled={isProcessing}
-                      className={`${btn.bgColor} text-white px-3 py-3 sm:py-3 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex flex-col items-center gap-1 min-h-[56px] sm:min-h-[48px]`}
-                    >
-                      <span className="text-lg">{btn.emoji}</span>
-                      <span>{btn.label}</span>
-                    </button>
-                  ))}
-                </div>
-                {onAddToWatchlist && (
-                  <button
-                    onClick={onAddToWatchlist}
-                    disabled={isProcessing}
-                    className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
-                  >
-                    + Add to Watchlist
-                  </button>
-                )}
-              </div>
+              </>
             )}
           </div>
         </div>
