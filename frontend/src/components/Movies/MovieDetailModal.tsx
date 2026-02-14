@@ -146,6 +146,8 @@ const MovieDetailModal: React.FC<MovieDetailModalProps> = memo(({
   const productionCompanies = fullDetails?.productionCompanies || (!isTMDBMovie(movie) ? movie.productionCompanies : null);
   const tagline = fullDetails?.tagline || (!isTMDBMovie(movie) ? (movie as Movie).tagline : null);
   const trailer = fullDetails?.trailer || (!isTMDBMovie(movie) ? (movie as Movie).trailer : null);
+  const watchProviders = fullDetails?.watchProviders;
+  const similarMovies = fullDetails?.similarMovies;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
@@ -379,6 +381,129 @@ const MovieDetailModal: React.FC<MovieDetailModalProps> = memo(({
             <h3 className="text-lg font-semibold text-white mb-2">Overview</h3>
             <p className="text-slate-300 leading-relaxed text-sm sm:text-base">{overview}</p>
           </div>
+
+          {/* Where to Watch Section */}
+          {watchProviders && (watchProviders.flatrate.length > 0 || watchProviders.rent.length > 0 || watchProviders.buy.length > 0) && (
+            <div className="px-4 sm:px-6 py-4 border-t border-slate-700/50">
+              <h3 className="text-lg font-semibold text-white mb-3">Where to Watch</h3>
+              <div className="space-y-3">
+                {/* Streaming */}
+                {watchProviders.flatrate.length > 0 && (
+                  <div>
+                    <p className="text-slate-400 text-xs uppercase tracking-wide mb-2">Stream</p>
+                    <div className="flex flex-wrap gap-2">
+                      {watchProviders.flatrate.map(provider => (
+                        <div
+                          key={provider.providerId}
+                          className="flex items-center gap-2 bg-slate-700 px-3 py-1.5 rounded-lg"
+                          title={provider.providerName}
+                        >
+                          <img
+                            src={`https://image.tmdb.org/t/p/w45${provider.logoPath}`}
+                            alt={provider.providerName}
+                            className="w-6 h-6 rounded"
+                          />
+                          <span className="text-sm text-slate-300">{provider.providerName}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Rent */}
+                {watchProviders.rent.length > 0 && (
+                  <div>
+                    <p className="text-slate-400 text-xs uppercase tracking-wide mb-2">Rent</p>
+                    <div className="flex flex-wrap gap-2">
+                      {watchProviders.rent.slice(0, 5).map(provider => (
+                        <div
+                          key={provider.providerId}
+                          className="flex items-center gap-2 bg-slate-700/50 px-2 py-1 rounded"
+                          title={provider.providerName}
+                        >
+                          <img
+                            src={`https://image.tmdb.org/t/p/w45${provider.logoPath}`}
+                            alt={provider.providerName}
+                            className="w-5 h-5 rounded"
+                          />
+                          <span className="text-xs text-slate-400">{provider.providerName}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Buy */}
+                {watchProviders.buy.length > 0 && (
+                  <div>
+                    <p className="text-slate-400 text-xs uppercase tracking-wide mb-2">Buy</p>
+                    <div className="flex flex-wrap gap-2">
+                      {watchProviders.buy.slice(0, 5).map(provider => (
+                        <div
+                          key={provider.providerId}
+                          className="flex items-center gap-2 bg-slate-700/50 px-2 py-1 rounded"
+                          title={provider.providerName}
+                        >
+                          <img
+                            src={`https://image.tmdb.org/t/p/w45${provider.logoPath}`}
+                            alt={provider.providerName}
+                            className="w-5 h-5 rounded"
+                          />
+                          <span className="text-xs text-slate-400">{provider.providerName}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {watchProviders.link && (
+                  <a
+                    href={watchProviders.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block text-xs text-blue-400 hover:text-blue-300 mt-2"
+                  >
+                    View all options on JustWatch &rarr;
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Similar Movies Section */}
+          {similarMovies && similarMovies.length > 0 && (
+            <div className="px-4 sm:px-6 py-4 border-t border-slate-700/50">
+              <h3 className="text-lg font-semibold text-white mb-3">Similar Movies</h3>
+              <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                {similarMovies.map((similar) => (
+                  <div key={similar.id} className="flex-shrink-0 w-24 sm:w-28">
+                    <div className="bg-slate-700 rounded-lg overflow-hidden aspect-[2/3]">
+                      {similar.posterPath ? (
+                        <img
+                          src={`https://image.tmdb.org/t/p/w185${similar.posterPath}`}
+                          alt={similar.title}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="185" height="278"%3E%3Crect fill="%23334155" width="185" height="278"/%3E%3C/svg%3E';
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-slate-500 text-xs">
+                          No Image
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-300 mt-1 line-clamp-2">{similar.title}</p>
+                    {similar.voteAverage > 0 && (
+                      <p className="text-xs text-yellow-400">
+                        &#9733; {similar.voteAverage.toFixed(1)}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Actions */}
           <div className="px-4 sm:px-6 pb-6 border-t border-slate-700 pt-4">

@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { watchlistAPI, WatchlistItem, Rating } from '../services/api';
+import { watchlistAPI, WatchlistItem, Rating, WatchlistSortOption, SortOrder } from '../services/api';
 import MovieDetailModal from '../components/Movies/MovieDetailModal';
+import { WatchlistItemSkeleton } from '../components/Common';
+import { GENRES } from '../constants/genres';
 
 interface Genre {
   id: number;
@@ -15,15 +17,36 @@ const Watchlist: React.FC = () => {
   const [markingWatched, setMarkingWatched] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<WatchlistItem | null>(null);
 
-  useEffect(() => {
-    loadWatchlist();
-  }, []);
+  // Sorting and filtering state
+  const [sortBy, setSortBy] = useState<WatchlistSortOption>('date');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+  const [filterGenre, setFilterGenre] = useState<number | null>(null);
 
-  const loadWatchlist = async () => {
+  // Notes editing state
+  const [editingNotesId, setEditingNotesId] = useState<string | null>(null);
+  const [notesInput, setNotesInput] = useState<string>('');
+  const [savingNotes, setSavingNotes] = useState(false);
+
+  // Get unique genres from watchlist for filter dropdown
+  const availableGenres = useMemo(() => {
+    const genreSet = new Set<number>();
+    watchlist.forEach(item => {
+      if (item.movie.genres && Array.isArray(item.movie.genres)) {
+        (item.movie.genres as Genre[]).forEach((g: Genre) => genreSet.add(g.id));
+      }
+    });
+    return GENRES.filter((g: Genre) => genreSet.has(g.id));
+  }, [watchlist]);
+
+  const loadWatchlist = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
-      const response = await watchlistAPI.getAll();
+      const response = await watchlistAPI.getAll({
+        sort: sortBy,
+        order: sortOrder,
+        genre: filterGenre
+      });
       setWatchlist(response.data);
     } catch (err) {
       console.error('Failed to load watchlist:', err);
@@ -31,7 +54,11 @@ const Watchlist: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [sortBy, sortOrder, filterGenre]);
+
+  useEffect(() => {
+    loadWatchlist();
+  }, [loadWatchlist]);
 
   const handleRemove = async (id: string) => {
     if (!window.confirm('Remove this movie from your watchlist?')) {
@@ -83,10 +110,47 @@ const Watchlist: React.FC = () => {
     setSelectedItem(null);
   };
 
+  // Notes handlers
+  const handleStartEditNotes = (item: WatchlistItem) => {
+    setEditingNotesId(item.id);
+    setNotesInput(item.notes || '');
+  };
+
+  const handleCancelEditNotes = () => {
+    setEditingNotesId(null);
+    setNotesInput('');
+  };
+
+  const handleSaveNotes = async (id: string) => {
+    try {
+      setSavingNotes(true);
+      const response = await watchlistAPI.update(id, { notes: notesInput || null });
+      // Update local state
+      setWatchlist(prev => prev.map(item =>
+        item.id === id ? { ...item, notes: response.data.notes } : item
+      ));
+      setEditingNotesId(null);
+      setNotesInput('');
+    } catch (err) {
+      console.error('Failed to save notes:', err);
+      setError('Failed to save notes. Please try again.');
+      setTimeout(() => setError(null), 3000);
+    } finally {
+      setSavingNotes(false);
+    }
+  };
+
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="text-white text-xl">Loading watchlist...</div>
+      <div>
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl sm:text-3xl font-bold text-white">Watchlist</h1>
+        </div>
+        <div className="grid gap-4">
+          {[...Array(3)].map((_, i) => (
+            <WatchlistItemSkeleton key={i} />
+          ))}
+        </div>
       </div>
     );
   }
@@ -119,7 +183,7 @@ const Watchlist: React.FC = () => {
         </div>
       </div>
 
-      {watchlist.length === 0 ? (
+      {watchlist.length === 0 && !filterGenre ? (
         <div className="bg-slate-800 rounded-lg p-12 text-center border border-slate-700">
           <div className="text-6xl mb-4">📋</div>
           <h2 className="text-xl font-semibold text-white mb-2">Your watchlist is empty</h2>
@@ -132,6 +196,77 @@ const Watchlist: React.FC = () => {
           </Link>
         </div>
       ) : (
+        <>
+          {/* Sorting and Filtering Controls */}
+          <div className="bg-slate-800 p-4 rounded-lg border border-slate-700 mb-6">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex items-center gap-2 flex-1 sm:flex-none">
+                <label className="text-slate-300 text-sm font-medium whitespace-nowrap">Sort by:</label>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as WatchlistSortOption)}
+                  className="flex-1 sm:flex-none sm:w-36 bg-slate-700 text-white px-3 py-2 rounded border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px]"
+                >
+                  <option value="date">Date Added</option>
+                  <option value="priority">Priority</option>
+                  <option value="title">Title</option>
+                  <option value="release">Release Date</option>
+                </select>
+                <button
+                  onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                  className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-2 rounded border border-slate-600 min-h-[44px] min-w-[44px] flex items-center justify-center"
+                  aria-label={`Sort ${sortOrder === 'asc' ? 'descending' : 'ascending'}`}
+                >
+                  {sortOrder === 'asc' ? (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+
+              {availableGenres.length > 0 && (
+                <div className="flex items-center gap-2 flex-1 sm:flex-none">
+                  <label className="text-slate-300 text-sm font-medium whitespace-nowrap">Genre:</label>
+                  <select
+                    value={filterGenre ?? ''}
+                    onChange={(e) => setFilterGenre(e.target.value ? parseInt(e.target.value, 10) : null)}
+                    className="flex-1 sm:flex-none sm:w-40 bg-slate-700 text-white px-3 py-2 rounded border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px]"
+                  >
+                    <option value="">All Genres</option>
+                    {availableGenres.map((genre: Genre) => (
+                      <option key={genre.id} value={genre.id}>{genre.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {filterGenre && (
+                <button
+                  onClick={() => setFilterGenre(null)}
+                  className="text-slate-400 hover:text-white text-sm underline self-center"
+                >
+                  Clear filter
+                </button>
+              )}
+            </div>
+          </div>
+
+          {watchlist.length === 0 ? (
+            <div className="bg-slate-800 rounded-lg p-8 text-center border border-slate-700">
+              <p className="text-slate-400">No movies match the current filter</p>
+              <button
+                onClick={() => setFilterGenre(null)}
+                className="mt-4 text-blue-400 hover:text-blue-300 text-sm underline"
+              >
+                Clear genre filter
+              </button>
+            </div>
+          ) : (
         <div className="grid gap-4">
           {watchlist.map((item) => {
             const { movie } = item;
@@ -188,6 +323,52 @@ const Watchlist: React.FC = () => {
                       </div>
                     )}
 
+                    {/* Notes Section */}
+                    <div className="mb-3">
+                      {editingNotesId === item.id ? (
+                        <div className="space-y-2">
+                          <textarea
+                            value={notesInput}
+                            onChange={(e) => setNotesInput(e.target.value)}
+                            placeholder="Why do you want to watch this movie?"
+                            className="w-full bg-slate-700 text-white text-sm px-3 py-2 rounded border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                            rows={2}
+                            maxLength={500}
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleSaveNotes(item.id)}
+                              disabled={savingNotes}
+                              className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded transition-colors disabled:opacity-50"
+                            >
+                              {savingNotes ? 'Saving...' : 'Save'}
+                            </button>
+                            <button
+                              onClick={handleCancelEditNotes}
+                              disabled={savingNotes}
+                              className="px-3 py-1 bg-slate-600 hover:bg-slate-500 text-white text-sm rounded transition-colors disabled:opacity-50"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-start gap-2">
+                          {item.notes ? (
+                            <p className="text-slate-400 text-sm italic flex-1">
+                              <span className="text-slate-500">Note:</span> {item.notes}
+                            </p>
+                          ) : null}
+                          <button
+                            onClick={() => handleStartEditNotes(item)}
+                            className="text-slate-500 hover:text-slate-300 text-xs underline flex-shrink-0"
+                          >
+                            {item.notes ? 'Edit note' : 'Add note'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
                     <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-2">
                       <p className="text-slate-400 text-sm">Mark as watched:</p>
                       <div className="grid grid-cols-4 gap-2 sm:flex sm:gap-2">
@@ -239,7 +420,9 @@ const Watchlist: React.FC = () => {
               </div>
             );
           })}
-        </div>
+          </div>
+          )}
+        </>
       )}
 
       {/* Movie Detail Modal */}

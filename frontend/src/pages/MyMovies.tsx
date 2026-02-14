@@ -4,6 +4,7 @@ import { userMoviesAPI, UserMovie, Rating } from '../services/api';
 import UserMovieCard from '../components/Movies/UserMovieCard';
 import UserMovieGridCard from '../components/Movies/UserMovieGridCard';
 import MovieDetailModal from '../components/Movies/MovieDetailModal';
+import { UserMovieCardSkeleton, UserMovieGridCardSkeleton } from '../components/Common';
 
 type ViewMode = 'list' | 'grid';
 
@@ -131,8 +132,23 @@ const MyMovies: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="text-white text-xl">Loading your movies...</div>
+      <div>
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+          <h1 className="text-2xl sm:text-3xl font-bold text-white">My Movies</h1>
+        </div>
+        {viewMode === 'list' ? (
+          <div className="grid gap-4">
+            {[...Array(4)].map((_, i) => (
+              <UserMovieCardSkeleton key={i} />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            {[...Array(10)].map((_, i) => (
+              <UserMovieGridCardSkeleton key={i} />
+            ))}
+          </div>
+        )}
       </div>
     );
   }

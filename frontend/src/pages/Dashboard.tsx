@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { userMoviesAPI, watchlistAPI, recommendationsAPI, UserPreferences } from '../services/api';
-import { MetadataLink } from '../components/Common';
+import { MetadataLink, StatCardSkeleton, RatingDistributionSkeleton, PreferencesSkeleton } from '../components/Common';
 
 // Helper to format runtime bucket
 const formatRuntime = (bucket: string): string => {
@@ -72,8 +72,24 @@ const Dashboard: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="text-white text-xl">Loading...</div>
+      <div>
+        <h1 className="text-2xl sm:text-3xl font-bold text-white mb-6 sm:mb-8">Dashboard</h1>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          <StatCardSkeleton />
+          <StatCardSkeleton />
+          <StatCardSkeleton />
+        </div>
+
+        <div className="bg-slate-800 rounded-lg p-6 shadow-lg border border-slate-700 mb-6">
+          <h2 className="text-xl font-bold text-white mb-4">Rating Distribution</h2>
+          <RatingDistributionSkeleton />
+        </div>
+
+        <div className="bg-slate-800 rounded-lg p-6 shadow-lg border border-slate-700">
+          <h2 className="text-xl font-bold text-white mb-4">Your Preferences</h2>
+          <PreferencesSkeleton />
+        </div>
       </div>
     );
   }

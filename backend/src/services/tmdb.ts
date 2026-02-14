@@ -97,6 +97,27 @@ export interface TMDBVideosResponse {
   results: TMDBVideo[];
 }
 
+export interface TMDBWatchProvider {
+  logo_path: string;
+  provider_id: number;
+  provider_name: string;
+  display_priority: number;
+}
+
+export interface TMDBWatchProviderData {
+  link?: string;
+  flatrate?: TMDBWatchProvider[];  // Subscription streaming (Netflix, etc.)
+  rent?: TMDBWatchProvider[];      // Rent options
+  buy?: TMDBWatchProvider[];       // Buy options
+}
+
+export interface TMDBWatchProvidersResponse {
+  id: number;
+  results: {
+    [countryCode: string]: TMDBWatchProviderData;
+  };
+}
+
 class TMDBService {
   private apiKey: string;
   private baseUrl: string;
@@ -338,6 +359,25 @@ class TMDBService {
     } catch (error) {
       console.error('TMDB get top rated error:', error);
       throw new Error('Failed to get top rated movies');
+    }
+  }
+
+  // Get watch providers (streaming availability) for a movie
+  async getWatchProviders(tmdbId: number, region: string = 'US'): Promise<TMDBWatchProviderData | null> {
+    try {
+      const response = await axios.get<TMDBWatchProvidersResponse>(
+        `${this.baseUrl}/movie/${tmdbId}/watch/providers`,
+        {
+          params: {
+            api_key: this.apiKey
+          }
+        }
+      );
+      // Return providers for the specified region, or null if not available
+      return response.data.results?.[region] || null;
+    } catch (error) {
+      console.error('TMDB get watch providers error:', error);
+      return null; // Return null on error, don't break the flow
     }
   }
 }

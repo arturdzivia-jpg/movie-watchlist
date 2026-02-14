@@ -7,6 +7,8 @@
 > git add <changed-files> && git commit -m "description" && git push
 > ```
 
+> **Deployment Note**: This project deploys to **Railway (backend)** and **Vercel (frontend)**. There is NO local database setup - schema changes are applied automatically on Railway deploy via `prisma db push` in the `npm start` script. Do NOT attempt to run Prisma commands locally.
+
 ## Table of Contents
 
 1. [Project Overview](#project-overview)
@@ -247,6 +249,8 @@ Protected (requires auth):
 ---
 
 ## Development Workflow
+
+> **IMPORTANT FOR AI ASSISTANTS**: This project has NO local database. The developer uses Railway (backend) and Vercel (frontend) for all deployments. Never run `prisma db push`, `prisma migrate`, or any database commands locally - they will fail due to missing DATABASE_URL. Schema changes are applied automatically on Railway deploy.
 
 ### Running in Development
 

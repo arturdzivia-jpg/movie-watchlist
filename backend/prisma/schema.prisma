@@ -91,6 +91,7 @@ model Watchlist {
   movieId  String    @map("movie_id")
   addedAt  DateTime  @default(now()) @map("added_at")
   priority Priority? @default(MEDIUM)
+  notes    String?   // Why the user wants to watch this movie
 
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   movie    Movie     @relation(fields: [movieId], references: [id], onDelete: Cascade)

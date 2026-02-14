@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import BottomNavigation from './BottomNavigation';
 
 const Layout: React.FC = () => {
   const { user, logout } = useAuth();
@@ -111,9 +112,12 @@ const Layout: React.FC = () => {
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 pb-24 md:pb-8">
         <Outlet />
       </main>
+
+      {/* Bottom navigation for mobile */}
+      <BottomNavigation />
     </div>
   );
 };

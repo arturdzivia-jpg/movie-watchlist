@@ -5,6 +5,7 @@ import MovieCard from '../components/Movies/MovieCard';
 import MovieDetailModal from '../components/Movies/MovieDetailModal';
 import { SwipeCardStack, SwipeControls, RatingModal, FilterBar } from '../components/Discover';
 import { useSwipeDiscover } from '../hooks/useSwipeDiscover';
+import { MovieCardSkeleton } from '../components/Common';
 import type { SwipeDirection } from '../types/discover';
 import type { MetadataType } from '../components/Common';
 
@@ -580,8 +581,10 @@ const Discovery: React.FC = () => {
           {activeTab === 'category' && (
             <>
               {isLoading ? (
-                <div className="flex justify-center items-center h-64">
-                  <div className="text-white text-xl">Loading movies...</div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {[...Array(8)].map((_, i) => (
+                    <MovieCardSkeleton key={i} />
+                  ))}
                 </div>
               ) : categoryCache[category].movies.length === 0 ? (
                 <div className="bg-slate-800 rounded-lg p-12 text-center border border-slate-700">

@@ -61,6 +61,27 @@ export interface TrailerInfo {
   site: string;     // "YouTube"
 }
 
+export interface WatchProvider {
+  logoPath: string;
+  providerId: number;
+  providerName: string;
+}
+
+export interface WatchProviders {
+  link?: string;
+  flatrate: WatchProvider[];  // Subscription streaming (Netflix, etc.)
+  rent: WatchProvider[];       // Rent options
+  buy: WatchProvider[];        // Buy options
+}
+
+export interface SimilarMovie {
+  id: number;
+  title: string;
+  posterPath: string | null;
+  releaseDate: string | null;
+  voteAverage: number;
+}
+
 export interface Movie {
   id: string;
   tmdbId: number;
@@ -77,6 +98,8 @@ export interface Movie {
   tagline: string | null;
   productionCompanies: { id: number; name: string }[] | null;
   trailer: TrailerInfo | null;
+  watchProviders?: WatchProviders | null;
+  similarMovies?: SimilarMovie[];
 }
 
 export type Rating = 'NOT_INTERESTED' | 'DISLIKE' | 'OK' | 'LIKE' | 'SUPER_LIKE';
@@ -98,6 +121,7 @@ export interface WatchlistItem {
   movieId: string;
   addedAt: string;
   priority: 'LOW' | 'MEDIUM' | 'HIGH';
+  notes?: string | null;
   movie: Movie;
 }
 
@@ -262,13 +286,32 @@ export const userMoviesAPI = {
     api.delete(`/api/user/movies/${id}`)
 };
 
+// Watchlist filter options
+export type WatchlistSortOption = 'date' | 'priority' | 'title' | 'release';
+export type SortOrder = 'asc' | 'desc';
+
+export interface WatchlistFilters {
+  sort?: WatchlistSortOption;
+  order?: SortOrder;
+  genre?: number | null;
+}
+
 // Watchlist API
 export const watchlistAPI = {
-  getAll: () =>
-    api.get<WatchlistItem[]>('/api/watchlist'),
+  getAll: (filters?: WatchlistFilters) =>
+    api.get<WatchlistItem[]>('/api/watchlist', {
+      params: {
+        sort: filters?.sort,
+        order: filters?.order,
+        genre: filters?.genre ?? undefined
+      }
+    }),
 
   add: (tmdbId: number, priority = 'MEDIUM') =>
     api.post<WatchlistItem>('/api/watchlist', { tmdbId, priority }),
+
+  update: (id: string, data: { priority?: 'LOW' | 'MEDIUM' | 'HIGH'; notes?: string | null }) =>
+    api.put<WatchlistItem>(`/api/watchlist/${id}`, data),
 
   remove: (id: string) =>
     api.delete(`/api/watchlist/${id}`),

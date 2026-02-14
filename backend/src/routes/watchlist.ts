@@ -11,18 +11,51 @@ const router = express.Router();
 router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user!.userId;
+    const { sort = 'date', order = 'desc', genre } = req.query;
+
+    // Build orderBy based on sort parameter
+    type OrderByType = { addedAt?: 'asc' | 'desc'; priority?: 'asc' | 'desc'; movie?: { title?: 'asc' | 'desc'; releaseDate?: 'asc' | 'desc' } };
+    let orderBy: OrderByType;
+
+    const sortOrder = order === 'asc' ? 'asc' : 'desc';
+
+    switch (sort) {
+      case 'priority':
+        orderBy = { priority: sortOrder };
+        break;
+      case 'title':
+        orderBy = { movie: { title: sortOrder } };
+        break;
+      case 'release':
+        orderBy = { movie: { releaseDate: sortOrder } };
+        break;
+      case 'date':
+      default:
+        orderBy = { addedAt: sortOrder };
+        break;
+    }
 
     const watchlist = await prisma.watchlist.findMany({
       where: { userId },
       include: {
         movie: true
       },
-      orderBy: {
-        addedAt: 'desc'
-      }
+      orderBy
     });
 
-    res.json(watchlist);
+    // Filter by genre if specified (done in JS since genres are stored as JSON)
+    let filteredWatchlist = watchlist;
+    if (genre) {
+      const genreId = parseInt(genre as string, 10);
+      if (!isNaN(genreId)) {
+        filteredWatchlist = watchlist.filter(item => {
+          const genres = item.movie.genres as Array<{ id: number; name: string }> | null;
+          return genres?.some(g => g.id === genreId);
+        });
+      }
+    }
+
+    res.json(filteredWatchlist);
   } catch (error) {
     console.error('Get watchlist error:', error);
     res.status(500).json({ error: 'Failed to get watchlist' });
@@ -83,6 +116,53 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error('Add to watchlist error:', error);
     res.status(500).json({ error: 'Failed to add to watchlist' });
+  }
+});
+
+// Update watchlist item (notes, priority)
+router.put('/:id', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user!.userId;
+    const { id } = req.params;
+    const { priority, notes } = req.body;
+
+    // Validate priority if provided
+    if (priority !== undefined) {
+      const priorityValidation = validatePriority(priority, 'MEDIUM');
+      if (!priorityValidation.isValid) {
+        return res.status(400).json({ error: priorityValidation.error });
+      }
+    }
+
+    // Check if watchlist item exists and belongs to user
+    const existing = await prisma.watchlist.findFirst({
+      where: { id, userId }
+    });
+
+    if (!existing) {
+      return res.status(404).json({ error: 'Watchlist item not found' });
+    }
+
+    // Build update data
+    const updateData: { priority?: Priority; notes?: string | null } = {};
+    if (priority !== undefined) {
+      updateData.priority = priority as Priority;
+    }
+    if (notes !== undefined) {
+      // Allow null or empty string to clear notes
+      updateData.notes = notes || null;
+    }
+
+    const updated = await prisma.watchlist.update({
+      where: { id },
+      data: updateData,
+      include: { movie: true }
+    });
+
+    res.json(updated);
+  } catch (error) {
+    console.error('Update watchlist error:', error);
+    res.status(500).json({ error: 'Failed to update watchlist item' });
   }
 });
 
