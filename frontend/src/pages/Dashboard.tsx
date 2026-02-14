@@ -283,6 +283,23 @@ const Dashboard: React.FC = () => {
               </div>
             )}
 
+            {/* Favorite Themes/Keywords */}
+            {preferences.preferredKeywords && preferences.preferredKeywords.length > 0 && (
+              <div>
+                <h3 className="text-slate-400 text-sm font-medium mb-2">Favorite Themes</h3>
+                <div className="flex flex-wrap gap-2">
+                  {preferences.preferredKeywords.slice(0, 5).map((keyword) => (
+                    <span
+                      key={keyword.id}
+                      className="bg-teal-900/50 border border-teal-700/40 text-teal-300 px-3 py-1 rounded-full text-sm"
+                    >
+                      {keyword.name} ({keyword.count})
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Disliked Genres */}
             {preferences.dislikedGenres.length > 0 && (
               <div>

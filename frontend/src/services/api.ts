@@ -170,6 +170,21 @@ export interface ProductionCompanyPreference {
   avgRating: number;
 }
 
+export interface KeywordPreference {
+  id: number;
+  name: string;
+  count: number;
+}
+
+export interface RatingDistribution {
+  superLike: number;
+  like: number;
+  ok: number;
+  dislike: number;
+  notInterested: number;
+  total: number;
+}
+
 export interface UserPreferences {
   preferredGenres: GenrePreference[];
   likedDirectors: DirectorPreference[];
@@ -179,6 +194,8 @@ export interface UserPreferences {
   preferredRuntime: RuntimePreference | null;
   likedCollections: CollectionPreference[];
   likedProductionCompanies: ProductionCompanyPreference[];
+  preferredKeywords: KeywordPreference[];
+  ratingDistribution: RatingDistribution;
   ratingStyle: 'generous' | 'balanced' | 'critical';
   totalRatedMovies: number;
 }

@@ -213,7 +213,7 @@ class UserPreferencesService {
       .filter(g => g.avgRating >= 2.5) // Only genres with positive average
       .sort((a, b) => b.avgRating * b.confidence - a.avgRating * a.confidence);
 
-    // Disliked genres
+    // Disliked genres - count genres from disliked movies
     const dislikedGenreMap = new Map<number, { id: number; name: string; count: number }>();
     dislikedMovies.forEach(userMovie => {
       const genres = userMovie.movie.genres as any[];
@@ -229,7 +229,23 @@ class UserPreferencesService {
       }
     });
 
+    // Count liked genres (LIKE + SUPER_LIKE) to compare
+    const likedGenreMap = new Map<number, number>();
+    likedMovies.forEach(userMovie => {
+      const genres = userMovie.movie.genres as any[];
+      if (Array.isArray(genres)) {
+        genres.forEach(genre => {
+          likedGenreMap.set(genre.id, (likedGenreMap.get(genre.id) || 0) + 1);
+        });
+      }
+    });
+
+    // Only include genre as "disliked" if dislikes > likes for that genre
     const dislikedGenres: GenrePreference[] = Array.from(dislikedGenreMap.values())
+      .filter(g => {
+        const likedCount = likedGenreMap.get(g.id) || 0;
+        return g.count > likedCount; // More dislikes than likes
+      })
       .map(g => ({
         ...g,
         avgRating: 1,
