@@ -59,7 +59,13 @@ router.get('/:tmdbId', authenticate, async (req: AuthRequest, res: Response) => 
     // If not cached or outdated (30 days), fetch from TMDB
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-    if (!movie || movie.lastUpdated < thirtyDaysAgo) {
+    // Check if cached data is missing new fields (backdropPath, cast with profilePath)
+    const needsRefresh = movie && (
+      movie.backdropPath === null ||
+      (Array.isArray(movie.cast) && movie.cast.length > 0 && !(movie.cast as any[])[0]?.profilePath)
+    );
+
+    if (!movie || movie.lastUpdated < thirtyDaysAgo || needsRefresh) {
       const tmdbMovie = await tmdbService.getMovieDetails(tmdbIdNum);
 
       // Extract director from crew (name and ID for filtering)
