@@ -21,7 +21,7 @@ function shuffleArray<T>(array: T[]): T[] {
 }
 
 class RecommendationService {
-  async generateRecommendations(userId: string, limit: number = 20): Promise<ScoredMovie[]> {
+  async generateRecommendations(userId: string, limit: number = 20, page: number = 1): Promise<ScoredMovie[]> {
     // Get user preferences
     const preferences = await userPreferencesService.getUserPreferences(userId);
 
@@ -52,7 +52,7 @@ class RecommendationService {
 
     // Fetch similar movies in parallel instead of sequentially
     const similarMoviesPromises = topLikedMovies.map(userMovie =>
-      tmdbService.getSimilarMovies(userMovie.movie.tmdbId, 1)
+      tmdbService.getSimilarMovies(userMovie.movie.tmdbId, page)
         .catch(error => {
           console.error(`Error getting similar movies for ${userMovie.movie.tmdbId}:`, error);
           return { results: [] as TMDBMovie[] };
@@ -78,7 +78,7 @@ class RecommendationService {
           with_genres: topGenres,
           sort_by: 'popularity.desc',
           'vote_count.gte': MIN_VOTE_COUNT,
-          page: 1
+          page
         });
 
         discovered.results.forEach(movie => {
@@ -95,7 +95,7 @@ class RecommendationService {
     // 3. Get popular movies as fallback
     if (candidateMovies.length < 20) {
       try {
-        const popular = await tmdbService.getPopularMovies(1);
+        const popular = await tmdbService.getPopularMovies(page);
         popular.results.forEach(movie => {
           if (!seenIds.has(movie.id) && !ratedTmdbIds.has(movie.id) && !watchlistTmdbIds.has(movie.id) && movie.vote_count >= MIN_VOTE_COUNT) {
             candidateMovies.push(movie);

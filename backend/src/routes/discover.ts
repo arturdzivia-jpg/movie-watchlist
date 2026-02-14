@@ -105,7 +105,7 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
       // Use existing recommendation service
       // Request more recommendations to allow for filtering
       const requestLimit = (genre || style !== 'all') ? 100 : 20;
-      let recommendations = await recommendationService.generateRecommendations(userId, requestLimit);
+      let recommendations = await recommendationService.generateRecommendations(userId, requestLimit, page);
 
       // Apply genre filter if specified
       if (genre) {
@@ -133,7 +133,7 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
       }
 
       movies = recommendations.slice(0, 20);
-      totalPages = 10; // Approximate - recommendations are generated dynamically
+      totalPages = 50; // TMDB typically has many pages of similar/popular movies
 
       // Fallback: If genre filter returns no results, fetch from TMDB discover
       // This handles cases like Documentary where user may not have rated any
