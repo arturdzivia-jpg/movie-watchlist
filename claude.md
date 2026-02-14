@@ -223,6 +223,9 @@ Recommendations:
 
 Discover:
   GET    /api/discover?category=popular&page=1&genre=28&style=anime
+  GET    /api/discover?actor=123        # Filter by TMDB actor ID
+  GET    /api/discover?director=456     # Filter by TMDB person ID (director)
+  GET    /api/discover?company=789      # Filter by TMDB company ID (studio)
 ```
 
 #### Frontend Routes (Overview)
@@ -288,14 +291,16 @@ export const favoritesAPI = {
 
 #### Modifying Database Schema
 
+> **IMPORTANT**: This project uses `prisma db push` instead of migrations. Schema changes are automatically applied when the server starts on Railway (via the `npm start` script). Do NOT create migration files manually.
+
 1. **Edit** `backend/prisma/schema.prisma`
-2. **Create migration:**
-   ```bash
-   cd backend
-   npx prisma migrate dev --name add_favorites_table
-   ```
-3. **Update TypeScript types** (Prisma generates automatically)
-4. **Update frontend types** in `frontend/src/services/api.ts`
+2. **Commit and push** - Schema syncs automatically on deploy via `prisma db push`
+3. **Update frontend types** in `frontend/src/services/api.ts`
+
+**How it works:**
+- The `npm start` script runs `npx prisma db push && node dist/index.js`
+- `prisma db push` automatically syncs the schema to the database
+- No migration files needed - changes apply on Railway deploy
 
 **Example:**
 ```prisma
@@ -373,11 +378,7 @@ model UserMovie {
 }
 ```
 
-2. **Create migration:**
-```bash
-cd backend
-npx prisma migrate dev --name add_watched_date
-```
+2. **Commit and push** - Schema syncs automatically on Railway deploy via `prisma db push`
 
 3. **Update API route:**
 ```typescript
@@ -441,10 +442,7 @@ enum Rating {
 }
 ```
 
-2. **Migrate:**
-```bash
-npx prisma migrate dev --name add_not_watched_rating
-```
+2. **Commit and push** - Schema syncs automatically on Railway deploy via `prisma db push`
 
 3. **Update frontend types:**
 ```typescript
@@ -572,15 +570,15 @@ npm run build
 
 ### Database Issues
 
-**Problem:** `Migration failed`
+**Problem:** `Schema sync failed on deploy`
 ```bash
-# Reset database (WARNING: deletes all data)
-cd backend
-npx prisma migrate reset
+# This project uses prisma db push (not migrations)
+# If schema sync fails, check Railway logs for errors
+# Common causes: invalid schema syntax, constraint violations
 
-# Or manually fix:
-npx prisma migrate resolve --rolled-back "20240115000000_migration_name"
-npx prisma migrate deploy
+# To reset database locally (WARNING: deletes all data):
+cd backend
+npx prisma db push --force-reset
 ```
 
 **Problem:** `Database too large`
@@ -809,7 +807,7 @@ docs(api): add examples for watchlist endpoints
 - [ ] TypeScript types are correct
 - [ ] No console errors in browser
 - [ ] Backend starts without errors
-- [ ] Database migrations included (if schema changed)
+- [ ] Schema changes in prisma/schema.prisma (auto-syncs on deploy)
 - [ ] Documentation updated (if needed)
 - [ ] Tested core user flows
 
@@ -854,8 +852,8 @@ npm run dev             # Start development server
 npm run build           # Build for production
 npm start               # Run production build
 npm run prisma:generate # Generate Prisma Client
-npm run prisma:migrate  # Run migrations
 npm run prisma:studio   # Open database GUI
+# Note: Schema syncs via `prisma db push` on deploy (no manual migrations)
 
 # Frontend
 cd frontend
@@ -883,9 +881,9 @@ For questions or issues:
 
 ---
 
-**Last Updated:** 2025-02-14
+**Last Updated:** 2026-02-14
 
-**Version:** 1.3.0
+**Version:** 1.4.0
 
 **Maintainers:** See [README.md](README.md)
 
@@ -917,8 +915,13 @@ The following features are already implemented in the codebase:
 - **Genre & Style Filtering:** Filter discover page by any TMDB genre and style (Movies, Anime, Cartoons) - grid view only
 - **Genre Filtering in Swipe Mode:** Swipe view shows genre filter only (no style filter) for cleaner UI
 - **View Mode Toggle:** My Movies supports both list and grid views (persisted to localStorage)
-- **Movie Detail Modal:** Click any movie to see full details including cast, director, runtime
+- **Movie Detail Modal:** Click any movie to see full details including cast, director, runtime, studios
 - **Swipe Discovery:** Tinder-like card swiping with full-height poster cards, gradient overlay for text, and animated transitions for all actions (drag, buttons, keyboard)
+- **Clickable Metadata:** Genres, actors, directors, and studios are clickable links throughout the app. Clicking navigates to the Discover page filtered by that item:
+  - **In Movie Detail Modal:** Click genre badges, director name, actor names, or studio names
+  - **In My Movies:** Click genre badges on movie cards
+  - **In Dashboard:** Click preference badges (favorite genres, actors, directors, studios)
+  - **URL-based Filters:** Filter state is stored in URL query params for shareable/bookmarkable links (e.g., `/recommendations?actor=123&genre=28`)
 
 ### Mobile-Responsive Design
 - **Hamburger Navigation:** Collapsible menu on mobile devices (< 768px)
