@@ -30,9 +30,11 @@ The movie recommendation system uses **content-based filtering** to suggest movi
    └─ Include popular movies as fallback
 
 3. Score Each Candidate
-   ├─ Genre matching (40%)
-   ├─ Popularity/rating (30%)
-   ├─ Vote count (20%)
+   ├─ Genre matching (30%)
+   ├─ Director matching (15%)
+   ├─ Actor matching (10%)
+   ├─ Popularity/rating (25%)
+   ├─ Vote count (10%)
    ├─ Recency bonus (10%)
    └─ Penalize disliked genres (-50%)
 
@@ -194,7 +196,7 @@ candidates = candidates.filter(movie =>
 
 **Scoring Breakdown:**
 
-#### 3.1 Genre Matching (40% Weight)
+#### 3.1 Genre Matching (30% Weight)
 
 ```typescript
 const movieGenreIds = movie.genre_ids;
@@ -203,14 +205,14 @@ const matchingGenres = movieGenreIds.filter(id =>
   preferredGenreIds.includes(id)
 );
 
-const genreScore = (matchingGenres.length / preferredGenreIds.length) * 40;
+const genreScore = (matchingGenres.length / preferredGenreIds.length) * 30;
 score += genreScore;
 
 // Example:
 // Movie has [28, 12, 878]
 // User likes [28, 12, 14, 27]
 // Matching: [28, 12] = 2/4 = 50% match
-// Score: 0.5 * 40 = 20 points
+// Score: 0.5 * 30 = 15 points
 ```
 
 **Reason Added:**
@@ -225,15 +227,60 @@ if (matchingGenres.length > 0) {
 }
 ```
 
-#### 3.2 Popularity/Rating Score (30% Weight)
+#### 3.2 Director Matching (15% Weight)
 
 ```typescript
-const popularityScore = (movie.vote_average / 10) * 30;
+if (movie.director && preferences.likedDirectors.length > 0) {
+  const directorMatch = preferences.likedDirectors.find(
+    d => d.name.toLowerCase() === movie.director.toLowerCase()
+  );
+  if (directorMatch) {
+    // More films liked from this director = higher bonus (capped at 15)
+    const directorScore = Math.min(directorMatch.count * 5, 15);
+    score += directorScore;
+    reasons.push(`From ${movie.director}`);
+  }
+}
+
+// Example:
+// User liked 3 Christopher Nolan films
+// Movie is by Christopher Nolan
+// Score: min(3 * 5, 15) = 15 points
+```
+
+**Why:** Recommends more films from directors the user enjoys.
+
+#### 3.3 Actor Matching (10% Weight)
+
+```typescript
+if (movie.cast && movie.cast.length > 0 && preferences.likedActors.length > 0) {
+  const likedActorIds = new Set(preferences.likedActors.map(a => a.id));
+  const matchingActors = movie.cast.slice(0, 5).filter(a => likedActorIds.has(a.id));
+  if (matchingActors.length > 0) {
+    // 2 points per matching actor, capped at 10
+    const actorScore = Math.min(matchingActors.length * 2, 10);
+    score += actorScore;
+    reasons.push(`With ${matchingActors.slice(0, 2).map(a => a.name).join(', ')}`);
+  }
+}
+
+// Example:
+// User has liked films with Tom Hanks and Leonardo DiCaprio
+// Movie features both actors
+// Score: min(2 * 2, 10) = 4 points
+```
+
+**Why:** Recommends films featuring actors from user's liked movies.
+
+#### 3.4 Popularity/Rating Score (25% Weight)
+
+```typescript
+const popularityScore = (movie.vote_average / 10) * 25;
 score += popularityScore;
 
 // Example:
 // Movie rating: 8.3/10
-// Score: (8.3 / 10) * 30 = 24.9 points
+// Score: (8.3 / 10) * 25 = 20.75 points
 
 if (movie.vote_average >= 7.5) {
   reasons.push(`Highly rated (${movie.vote_average.toFixed(1)}/10)`);
@@ -242,23 +289,23 @@ if (movie.vote_average >= 7.5) {
 
 **Why:** Recommends well-reviewed movies.
 
-#### 3.3 Vote Count Score (20% Weight)
+#### 3.5 Vote Count Score (10% Weight)
 
 ```typescript
-const voteCountScore = Math.min(movie.vote_count / 1000, 1) * 20;
+const voteCountScore = Math.min(movie.vote_count / 5000, 1) * 10;
 score += voteCountScore;
 
 // Example:
-// Movie has 2500 votes
-// Score: min(2500 / 1000, 1) * 20 = 1.0 * 20 = 20 points
+// Movie has 10,000 votes
+// Score: min(10000 / 5000, 1) * 10 = 1.0 * 10 = 10 points
 //
-// Movie has 500 votes
-// Score: min(500 / 1000, 1) * 20 = 0.5 * 20 = 10 points
+// Movie has 2,500 votes
+// Score: min(2500 / 5000, 1) * 10 = 0.5 * 10 = 5 points
 ```
 
-**Why:** Filters out obscure/unreliable ratings (requires 1000+ votes for full score).
+**Why:** Filters out obscure/unreliable ratings (requires 5000+ votes for full score).
 
-#### 3.4 Recency Bonus (10% Weight)
+#### 3.6 Recency Bonus (10% Weight)
 
 ```typescript
 const releaseYear = parseInt(movie.release_date.split('-')[0]);
@@ -281,7 +328,7 @@ if (yearDiff <= 3) {
 
 **Why:** Slight preference for newer movies.
 
-#### 3.5 Disliked Genre Penalty
+#### 3.7 Disliked Genre Penalty
 
 ```typescript
 const dislikedGenreIds = preferences.dislikedGenres.map(g => g.id);
@@ -301,7 +348,7 @@ if (hasDislikedGenre) {
 
 **Why:** Avoids genres user consistently dislikes.
 
-#### 3.6 Default Reason
+#### 3.8 Default Reason
 
 ```typescript
 if (reasons.length === 0) {
@@ -358,13 +405,15 @@ return scoredMovies.slice(0, limit);
 
 **Calculation:**
 ```
-Genre matching: 3/3 = 100% → 40 points
-Popularity: 8.3/10 → 24.9 points
-Vote count: min(22847/1000, 1) = 1.0 → 20 points
-Recency: 2024-2019 = 5 years → 5 points
+Genre matching: 3/3 = 100% → 30 points
+Director (Russo Brothers, liked 2 films): min(2*5, 15) → 10 points
+Actor (Robert Downey Jr., in liked films): 1 actor → 2 points
+Popularity: 8.3/10 → 20.75 points
+Vote count: min(22847/5000, 1) = 1.0 → 10 points
+Recency: 2026-2019 = 7 years → 5 points
 Penalty: None
 
-Total: 89.9 points
+Total: 77.75 points
 ```
 
 **Reasons:**
@@ -388,12 +437,14 @@ Total: 89.9 points
 **Calculation:**
 ```
 Genre matching: 0/3 = 0% → 0 points
-Popularity: 8.7/10 → 26.1 points
-Vote count: min(23000/1000, 1) = 1.0 → 20 points
-Recency: 2024-1994 = 30 years → 0 points
+Director (Frank Darabont): Not in liked directors → 0 points
+Actor: No matching actors → 0 points
+Popularity: 8.7/10 → 21.75 points
+Vote count: min(23000/5000, 1) = 1.0 → 10 points
+Recency: 2026-1994 = 32 years → 0 points
 Penalty: None
 
-Total: 46.1 points
+Total: 31.75 points
 ```
 
 **Reasons:**
@@ -418,14 +469,16 @@ Total: 46.1 points
 **Calculation:**
 ```
 Genre matching: 0/2 = 0% → 0 points
-Popularity: 7.5/10 → 22.5 points
-Vote count: min(9000/1000, 1) = 1.0 → 20 points
-Recency: 2024-2013 = 11 years → 0 points
-Subtotal: 42.5 points
+Director (James Wan): Not in liked directors → 0 points
+Actor: No matching actors → 0 points
+Popularity: 7.5/10 → 18.75 points
+Vote count: min(9000/5000, 1) = 1.0 → 10 points
+Recency: 2026-2013 = 13 years → 0 points
+Subtotal: 28.75 points
 
-Penalty: Has Horror (disliked) → 42.5 * 0.5 = 21.25 points
+Penalty: Has Horror (disliked) → 28.75 * 0.5 = 14.375 points
 
-Total: 21.25 points
+Total: 14.375 points
 ```
 
 **Reasons:**
@@ -505,23 +558,7 @@ Total: 21.25 points
 
 ### Short Term
 
-1. **Director/Actor Matching**
-   ```typescript
-   // Currently not heavily weighted
-   if (movie.director in user_liked_directors) {
-     score += 25;  // Add director bonus
-     reasons.push(`Same director as [Movie]`);
-   }
-   ```
-
-2. **Cast Matching**
-   ```typescript
-   const matchingActors = intersection(movie.cast, user_liked_actors);
-   const castScore = (matchingActors.length / 5) * 20;
-   score += castScore;
-   ```
-
-3. **Diversity Injection**
+1. **Diversity Injection**
    ```typescript
    // Include 20% recommendations from unexplored genres
    const diverseMovies = discoverFromUnexploredGenres();
@@ -676,20 +713,24 @@ describe('Recommendation Algorithm', () => {
 // backend/src/services/recommendation.ts
 
 const WEIGHTS = {
-  GENRE_MATCH: 0.40,      // 40%
-  POPULARITY: 0.30,       // 30%
-  VOTE_COUNT: 0.20,       // 20%
+  GENRE_MATCH: 0.30,      // 30%
+  DIRECTOR_MATCH: 0.15,   // 15%
+  ACTOR_MATCH: 0.10,      // 10%
+  POPULARITY: 0.25,       // 25%
+  VOTE_COUNT: 0.10,       // 10%
   RECENCY: 0.10,          // 10%
   DISLIKE_PENALTY: 0.50   // 50% reduction
 };
 
 const THRESHOLDS = {
   HIGH_RATING: 7.5,       // "Highly rated" badge
-  MIN_VOTES: 1000,        // Full vote count score
+  MIN_VOTES: 5000,        // Full vote count score
   RECENT_YEARS: 3,        // "Recent release" badge
   TOP_LIKED_MOVIES: 5,    // Number for similarity search
   TOP_GENRES: 3,          // Genres for discovery
-  TOP_CAST: 5             // Cast members to consider
+  TOP_CAST: 5,            // Cast members to consider
+  ENRICHMENT_LIMIT: 50,   // Max candidates to enrich with details
+  ENRICHMENT_BATCH: 10    // Parallel detail fetch batch size
 };
 ```
 

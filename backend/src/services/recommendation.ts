@@ -1,6 +1,6 @@
 import prisma from '../config/database';
 import tmdbService, { TMDBMovie } from './tmdb';
-import userPreferencesService from './userPreferences';
+import userPreferencesService, { UserPreferences } from './userPreferences';
 
 interface ScoredMovie extends TMDBMovie {
   score: number;
@@ -9,6 +9,12 @@ interface ScoredMovie extends TMDBMovie {
 
 // Minimum vote count threshold to filter out obscure movies with unreliable ratings
 const MIN_VOTE_COUNT = 100;
+
+// Number of top candidates to enrich with full details (director/cast)
+const ENRICHMENT_LIMIT = 50;
+
+// Batch size for parallel detail fetching
+const ENRICHMENT_BATCH_SIZE = 10;
 
 // Fisher-Yates shuffle algorithm
 function shuffleArray<T>(array: T[]): T[] {
@@ -21,6 +27,56 @@ function shuffleArray<T>(array: T[]): T[] {
 }
 
 class RecommendationService {
+  /**
+   * Enrich candidate movies with director and cast information.
+   * Uses database cache when available, fetches from TMDB otherwise.
+   */
+  private async enrichMoviesWithDetails(movies: TMDBMovie[]): Promise<TMDBMovie[]> {
+    const enrichedMovies: TMDBMovie[] = [];
+    const moviesToFetch: TMDBMovie[] = [];
+
+    // First, check database cache for existing movie details
+    const tmdbIds = movies.map(m => m.id);
+    const cachedMovies = await prisma.movie.findMany({
+      where: { tmdbId: { in: tmdbIds } },
+      select: { tmdbId: true, director: true, cast: true }
+    });
+
+    const cacheMap = new Map(cachedMovies.map(m => [m.tmdbId, m]));
+
+    for (const movie of movies) {
+      const cached = cacheMap.get(movie.id);
+      if (cached?.director || cached?.cast) {
+        enrichedMovies.push({
+          ...movie,
+          director: cached.director || undefined,
+          cast: cached.cast as { id: number; name: string }[] || undefined
+        });
+      } else {
+        moviesToFetch.push(movie);
+      }
+    }
+
+    // Fetch remaining movies from TMDB in batches
+    for (let i = 0; i < moviesToFetch.length; i += ENRICHMENT_BATCH_SIZE) {
+      const batch = moviesToFetch.slice(i, i + ENRICHMENT_BATCH_SIZE);
+      const detailsPromises = batch.map(movie =>
+        tmdbService.getMovieDetails(movie.id)
+          .then(details => {
+            const director = details.credits?.crew.find(c => c.job === 'Director')?.name;
+            const cast = details.credits?.cast.slice(0, 5).map(a => ({ id: a.id, name: a.name }));
+            return { ...movie, director, cast };
+          })
+          .catch(() => movie) // Keep original if fetch fails
+      );
+
+      const batchResults = await Promise.all(detailsPromises);
+      enrichedMovies.push(...batchResults);
+    }
+
+    return enrichedMovies;
+  }
+
   async generateRecommendations(userId: string, limit: number = 20, page: number = 1): Promise<ScoredMovie[]> {
     // Get user preferences
     const preferences = await userPreferencesService.getUserPreferences(userId);
@@ -107,8 +163,14 @@ class RecommendationService {
       }
     }
 
-    // Score and rank candidates
-    const scoredMovies = candidateMovies.map(movie => this.scoreMovie(movie, preferences));
+    // Enrich top candidates with director/cast details for better scoring
+    const candidatesToEnrich = candidateMovies.slice(0, ENRICHMENT_LIMIT);
+    const remainingCandidates = candidateMovies.slice(ENRICHMENT_LIMIT);
+    const enrichedCandidates = await this.enrichMoviesWithDetails(candidatesToEnrich);
+
+    // Score and rank candidates (enriched first, then remaining)
+    const allCandidates = [...enrichedCandidates, ...remainingCandidates];
+    const scoredMovies = allCandidates.map(movie => this.scoreMovie(movie, preferences));
 
     // Group movies into tiers by score, shuffle within each tier for variety
     const tier1 = scoredMovies.filter(m => m.score >= 70); // Top recommendations
@@ -125,25 +187,25 @@ class RecommendationService {
     return shuffledResults.slice(0, limit);
   }
 
-  private scoreMovie(movie: TMDBMovie, preferences: any): ScoredMovie {
+  private scoreMovie(movie: TMDBMovie, preferences: UserPreferences): ScoredMovie {
     let score = 0;
     const reasons: string[] = [];
 
-    // Genre matching (40% weight)
+    // Genre matching (30% weight - reduced from 40%)
     const movieGenreIds = movie.genre_ids || [];
-    const preferredGenreIds = preferences.preferredGenres.map((g: any) => g.id);
-    const dislikedGenreIds = preferences.dislikedGenres.map((g: any) => g.id);
+    const preferredGenreIds = preferences.preferredGenres.map(g => g.id);
+    const dislikedGenreIds = preferences.dislikedGenres.map(g => g.id);
 
     const matchingGenres = movieGenreIds.filter((id: number) => preferredGenreIds.includes(id));
     const dislikedGenreMatches = movieGenreIds.filter((id: number) => dislikedGenreIds.includes(id));
 
     if (matchingGenres.length > 0) {
-      const genreScore = (matchingGenres.length / Math.max(preferredGenreIds.length, 1)) * 40;
+      const genreScore = (matchingGenres.length / Math.max(preferredGenreIds.length, 1)) * 30;
       score += genreScore;
 
       const genreNames = preferences.preferredGenres
-        .filter((g: any) => matchingGenres.includes(g.id))
-        .map((g: any) => g.name);
+        .filter(g => matchingGenres.includes(g.id))
+        .map(g => g.name);
 
       if (genreNames.length > 0) {
         reasons.push(`Matches your favorite genres: ${genreNames.slice(0, 2).join(', ')}`);
@@ -155,19 +217,44 @@ class RecommendationService {
       score *= 0.5;
     }
 
-    // Popularity/Rating (30% weight)
-    const popularityScore = (movie.vote_average / 10) * 30;
+    // Director matching (15% weight - NEW)
+    if (movie.director && preferences.likedDirectors.length > 0) {
+      const directorMatch = preferences.likedDirectors.find(
+        d => d.name.toLowerCase() === movie.director!.toLowerCase()
+      );
+      if (directorMatch) {
+        // More films liked from this director = higher bonus (capped at 15)
+        const directorScore = Math.min(directorMatch.count * 5, 15);
+        score += directorScore;
+        reasons.push(`From ${movie.director}`);
+      }
+    }
+
+    // Actor matching (10% weight - NEW)
+    if (movie.cast && movie.cast.length > 0 && preferences.likedActors.length > 0) {
+      const likedActorIds = new Set(preferences.likedActors.map(a => a.id));
+      const matchingActors = movie.cast.slice(0, 5).filter(a => likedActorIds.has(a.id));
+      if (matchingActors.length > 0) {
+        // 2 points per matching actor, capped at 10
+        const actorScore = Math.min(matchingActors.length * 2, 10);
+        score += actorScore;
+        reasons.push(`With ${matchingActors.slice(0, 2).map(a => a.name).join(', ')}`);
+      }
+    }
+
+    // Popularity/Rating (25% weight - reduced from 30%)
+    const popularityScore = (movie.vote_average / 10) * 25;
     score += popularityScore;
 
     if (movie.vote_average >= 7.5) {
       reasons.push(`Highly rated (${movie.vote_average.toFixed(1)}/10)`);
     }
 
-    // Vote count consideration (20% weight) - higher cap for better differentiation
-    const voteCountScore = Math.min(movie.vote_count / 5000, 1) * 20;
+    // Vote count consideration (10% weight - reduced from 20%)
+    const voteCountScore = Math.min(movie.vote_count / 5000, 1) * 10;
     score += voteCountScore;
 
-    // Recency bonus (10% weight)
+    // Recency bonus (10% weight - unchanged)
     const releaseYear = movie.release_date ? parseInt(movie.release_date.split('-')[0]) : 0;
     const currentYear = new Date().getFullYear();
     const yearDiff = currentYear - releaseYear;

@@ -19,6 +19,9 @@ export interface TMDBMovie {
   vote_count: number;
   popularity: number;
   original_language?: string;
+  // Optional fields added when enriched with full details
+  director?: string;
+  cast?: { id: number; name: string }[];
 }
 
 export interface TMDBMovieDetails extends TMDBMovie {
