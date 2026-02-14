@@ -68,9 +68,11 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
     // Fetch and cache movie details with keywords
     const tmdbMovie = await tmdbService.getEnhancedMovieDetails(tmdbId);
 
-    const director = tmdbMovie.credits?.crew.find(
+    const directorInfo = tmdbMovie.credits?.crew.find(
       person => person.job === 'Director'
-    )?.name || null;
+    );
+    const director = directorInfo?.name || null;
+    const directorId = directorInfo?.id || null;
 
     const cast = tmdbMovie.credits?.cast.slice(0, 10).map(actor => ({
       id: actor.id,
@@ -98,6 +100,7 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
         releaseDate: tmdbMovie.release_date,
         genres: tmdbMovie.genres,
         director,
+        directorId,
         cast,
         runtime: tmdbMovie.runtime,
         keywords: (tmdbMovie.keywords || []) as any,
@@ -114,6 +117,7 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
         releaseDate: tmdbMovie.release_date,
         genres: tmdbMovie.genres,
         director,
+        directorId,
         cast,
         runtime: tmdbMovie.runtime,
         keywords: (tmdbMovie.keywords || []) as any,

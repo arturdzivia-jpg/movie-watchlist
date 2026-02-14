@@ -211,6 +211,9 @@ class TMDBService {
     with_original_language?: string;
     without_original_language?: string;
     with_keywords?: string;
+    with_cast?: string;      // Filter by actor ID (person)
+    with_crew?: string;      // Filter by crew member ID (for directors)
+    with_companies?: string; // Filter by production company ID
     sort_by?: string;
     page?: number;
     'vote_count.gte'?: number;

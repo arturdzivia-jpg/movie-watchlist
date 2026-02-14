@@ -62,10 +62,12 @@ router.get('/:tmdbId', authenticate, async (req: AuthRequest, res: Response) => 
     if (!movie || movie.lastUpdated < thirtyDaysAgo) {
       const tmdbMovie = await tmdbService.getMovieDetails(tmdbIdNum);
 
-      // Extract director from crew
-      const director = tmdbMovie.credits?.crew.find(
+      // Extract director from crew (name and ID for filtering)
+      const directorInfo = tmdbMovie.credits?.crew.find(
         person => person.job === 'Director'
-      )?.name || null;
+      );
+      const director = directorInfo?.name || null;
+      const directorId = directorInfo?.id || null;
 
       // Extract top cast members
       const cast = tmdbMovie.credits?.cast.slice(0, 10).map(actor => ({
@@ -84,6 +86,7 @@ router.get('/:tmdbId', authenticate, async (req: AuthRequest, res: Response) => 
           releaseDate: tmdbMovie.release_date,
           genres: tmdbMovie.genres,
           director,
+          directorId,
           cast,
           runtime: tmdbMovie.runtime,
           lastUpdated: new Date()
@@ -96,6 +99,7 @@ router.get('/:tmdbId', authenticate, async (req: AuthRequest, res: Response) => 
           releaseDate: tmdbMovie.release_date,
           genres: tmdbMovie.genres,
           director,
+          directorId,
           cast,
           runtime: tmdbMovie.runtime
         }

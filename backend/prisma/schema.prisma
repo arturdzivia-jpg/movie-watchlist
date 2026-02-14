@@ -35,6 +35,7 @@ model Movie {
   releaseDate          String?  @map("release_date")
   genres               Json?
   director             String?
+  directorId           Int?     @map("director_id")
   cast                 Json?
   runtime              Int?
   keywords             Json?    // Array of { id: number, name: string }

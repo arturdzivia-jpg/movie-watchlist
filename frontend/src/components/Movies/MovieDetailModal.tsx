@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { TMDBMovie, Movie, Rating, moviesAPI } from '../../services/api';
+import { MetadataLink } from '../Common';
 
 interface MovieDetailModalProps {
   movie: TMDBMovie | Movie;
@@ -114,8 +115,10 @@ const MovieDetailModal: React.FC<MovieDetailModalProps> = ({
   // Full details fields
   const runtime = fullDetails?.runtime || (!isTMDBMovie(movie) ? movie.runtime : null);
   const director = fullDetails?.director || (!isTMDBMovie(movie) ? movie.director : null);
+  const directorId = fullDetails?.directorId || (!isTMDBMovie(movie) ? movie.directorId : null);
   const cast = fullDetails?.cast || (!isTMDBMovie(movie) ? movie.cast : null);
   const genres = fullDetails?.genres || (!isTMDBMovie(movie) ? movie.genres : null);
+  const productionCompanies = fullDetails?.productionCompanies || (!isTMDBMovie(movie) ? movie.productionCompanies : null);
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
@@ -185,12 +188,14 @@ const MovieDetailModal: React.FC<MovieDetailModalProps> = ({
               {genres && genres.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-4">
                   {genres.map(g => (
-                    <span
+                    <MetadataLink
                       key={g.id}
-                      className="bg-slate-700 text-slate-300 px-3 py-1 rounded-full text-sm"
-                    >
-                      {g.name}
-                    </span>
+                      type="genre"
+                      id={g.id}
+                      name={g.name}
+                      onNavigate={onClose}
+                      className="bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white px-3 py-1 rounded-full text-sm"
+                    />
                   ))}
                 </div>
               )}
@@ -198,7 +203,18 @@ const MovieDetailModal: React.FC<MovieDetailModalProps> = ({
               {/* Director */}
               {director && (
                 <p className="text-slate-400 mb-2">
-                  <span className="text-slate-300 font-medium">Director:</span> {director}
+                  <span className="text-slate-300 font-medium">Director: </span>
+                  {directorId ? (
+                    <MetadataLink
+                      type="director"
+                      id={directorId}
+                      name={director}
+                      onNavigate={onClose}
+                      className="text-slate-300 hover:text-blue-400"
+                    />
+                  ) : (
+                    <span>{director}</span>
+                  )}
                 </p>
               )}
 
@@ -206,9 +222,41 @@ const MovieDetailModal: React.FC<MovieDetailModalProps> = ({
               {cast && cast.length > 0 && (
                 <div className="mb-4">
                   <p className="text-slate-300 font-medium mb-1">Cast:</p>
-                  <p className="text-slate-400 text-sm">
-                    {cast.slice(0, 5).map(c => c.name).join(', ')}
-                  </p>
+                  <div className="flex flex-wrap gap-x-1 text-sm">
+                    {cast.slice(0, 5).map((c, index) => (
+                      <span key={c.id}>
+                        <MetadataLink
+                          type="actor"
+                          id={c.id}
+                          name={c.name}
+                          onNavigate={onClose}
+                          className="text-slate-300 hover:text-blue-400"
+                        />
+                        {index < Math.min(cast.length - 1, 4) && <span className="text-slate-500">, </span>}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Studios */}
+              {productionCompanies && productionCompanies.length > 0 && (
+                <div className="mb-4">
+                  <p className="text-slate-300 font-medium mb-1">Studios:</p>
+                  <div className="flex flex-wrap gap-x-1 text-sm">
+                    {productionCompanies.slice(0, 3).map((c, index) => (
+                      <span key={c.id}>
+                        <MetadataLink
+                          type="company"
+                          id={c.id}
+                          name={c.name}
+                          onNavigate={onClose}
+                          className="text-slate-300 hover:text-blue-400"
+                        />
+                        {index < Math.min(productionCompanies.length - 1, 2) && <span className="text-slate-500">, </span>}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               )}
 

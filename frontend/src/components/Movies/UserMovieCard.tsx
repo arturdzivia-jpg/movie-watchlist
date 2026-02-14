@@ -1,5 +1,6 @@
 import React from 'react';
 import { UserMovie, Rating } from '../../services/api';
+import { MetadataLink } from '../Common';
 
 interface Genre {
   id: number;
@@ -67,9 +68,13 @@ const UserMovieCard: React.FC<UserMovieCardProps> = ({ userMovie, onUpdateRating
           {movie.genres && Array.isArray(movie.genres) && (
             <div className="flex flex-wrap gap-2 mb-3">
               {(movie.genres as Genre[]).map((genre) => (
-                <span key={genre.id} className="bg-slate-700 text-slate-300 px-2 py-1 rounded text-xs">
-                  {genre.name}
-                </span>
+                <MetadataLink
+                  key={genre.id}
+                  type="genre"
+                  id={genre.id}
+                  name={genre.name}
+                  className="bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white px-2 py-1 rounded text-xs"
+                />
               ))}
             </div>
           )}

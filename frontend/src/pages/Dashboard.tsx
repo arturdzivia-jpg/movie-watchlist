@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { userMoviesAPI, watchlistAPI, recommendationsAPI, UserPreferences } from '../services/api';
+import { MetadataLink } from '../components/Common';
 
 // Helper to format runtime bucket
 const formatRuntime = (bucket: string): string => {
@@ -238,12 +239,13 @@ const Dashboard: React.FC = () => {
                 <h3 className="text-slate-400 text-sm font-medium mb-2">Favorite Genres</h3>
                 <div className="flex flex-wrap gap-2">
                   {preferences.preferredGenres.slice(0, 5).map((genre) => (
-                    <span
+                    <MetadataLink
                       key={genre.id}
-                      className="bg-blue-900/50 border border-blue-700/40 text-blue-300 px-3 py-1 rounded-full text-sm"
-                    >
-                      {genre.name} ({genre.count})
-                    </span>
+                      type="genre"
+                      id={genre.id}
+                      name={`${genre.name} (${genre.count})`}
+                      className="bg-blue-900/50 hover:bg-blue-800/60 border border-blue-700/40 text-blue-300 hover:text-blue-200 px-3 py-1 rounded-full text-sm"
+                    />
                   ))}
                 </div>
               </div>
@@ -255,12 +257,22 @@ const Dashboard: React.FC = () => {
                 <h3 className="text-slate-400 text-sm font-medium mb-2">Favorite Directors</h3>
                 <div className="flex flex-wrap gap-2">
                   {preferences.likedDirectors.slice(0, 3).map((director) => (
-                    <span
-                      key={director.name}
-                      className="bg-purple-900/50 border border-purple-700/40 text-purple-300 px-3 py-1 rounded-full text-sm"
-                    >
-                      {director.name} ({director.count})
-                    </span>
+                    director.id ? (
+                      <MetadataLink
+                        key={director.name}
+                        type="director"
+                        id={director.id}
+                        name={`${director.name} (${director.count})`}
+                        className="bg-purple-900/50 hover:bg-purple-800/60 border border-purple-700/40 text-purple-300 hover:text-purple-200 px-3 py-1 rounded-full text-sm"
+                      />
+                    ) : (
+                      <span
+                        key={director.name}
+                        className="bg-purple-900/50 border border-purple-700/40 text-purple-300 px-3 py-1 rounded-full text-sm"
+                      >
+                        {director.name} ({director.count})
+                      </span>
+                    )
                   ))}
                 </div>
               </div>
@@ -272,12 +284,13 @@ const Dashboard: React.FC = () => {
                 <h3 className="text-slate-400 text-sm font-medium mb-2">Favorite Actors</h3>
                 <div className="flex flex-wrap gap-2">
                   {preferences.likedActors.slice(0, 3).map((actor) => (
-                    <span
+                    <MetadataLink
                       key={actor.id}
-                      className="bg-green-900/50 border border-green-700/40 text-green-300 px-3 py-1 rounded-full text-sm"
-                    >
-                      {actor.name} ({actor.count})
-                    </span>
+                      type="actor"
+                      id={actor.id}
+                      name={`${actor.name} (${actor.count})`}
+                      className="bg-green-900/50 hover:bg-green-800/60 border border-green-700/40 text-green-300 hover:text-green-200 px-3 py-1 rounded-full text-sm"
+                    />
                   ))}
                 </div>
               </div>
@@ -306,12 +319,13 @@ const Dashboard: React.FC = () => {
                 <h3 className="text-slate-400 text-sm font-medium mb-2">Genres You Avoid</h3>
                 <div className="flex flex-wrap gap-2">
                   {preferences.dislikedGenres.slice(0, 5).map((genre) => (
-                    <span
+                    <MetadataLink
                       key={genre.id}
-                      className="bg-red-900/50 border border-red-700/40 text-red-300 px-3 py-1 rounded-full text-sm"
-                    >
-                      {genre.name} ({genre.count})
-                    </span>
+                      type="genre"
+                      id={genre.id}
+                      name={`${genre.name} (${genre.count})`}
+                      className="bg-red-900/50 hover:bg-red-800/60 border border-red-700/40 text-red-300 hover:text-red-200 px-3 py-1 rounded-full text-sm"
+                    />
                   ))}
                 </div>
               </div>
@@ -340,12 +354,13 @@ const Dashboard: React.FC = () => {
                 <h3 className="text-slate-400 text-sm font-medium mb-2">Favorite Studios</h3>
                 <div className="flex flex-wrap gap-2">
                   {preferences.likedProductionCompanies.slice(0, 3).map((company) => (
-                    <span
+                    <MetadataLink
                       key={company.id}
-                      className="bg-indigo-900/50 border border-indigo-700/40 text-indigo-300 px-3 py-1 rounded-full text-sm"
-                    >
-                      {company.name} ({company.count})
-                    </span>
+                      type="company"
+                      id={company.id}
+                      name={`${company.name} (${company.count})`}
+                      className="bg-indigo-900/50 hover:bg-indigo-800/60 border border-indigo-700/40 text-indigo-300 hover:text-indigo-200 px-3 py-1 rounded-full text-sm"
+                    />
                   ))}
                 </div>
               </div>

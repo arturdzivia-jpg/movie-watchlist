@@ -16,6 +16,7 @@ export interface GenrePreference {
 }
 
 export interface DirectorPreference {
+  id: number | null;      // TMDB person ID for filtering
   name: string;
   count: number;
   avgRating: number;
@@ -254,16 +255,21 @@ class UserPreferencesService {
       .sort((a, b) => b.count - a.count);
 
     // ===== DIRECTOR PREFERENCES =====
-    const directorMap = new Map<string, { name: string; ratings: number[] }>();
+    const directorMap = new Map<string, { id: number | null; name: string; ratings: number[] }>();
     allRatedMovies.forEach(userMovie => {
       const director = userMovie.movie.director;
+      const directorId = userMovie.movie.directorId;
       const ratingWeight = getRatingWeight(userMovie.rating);
       if (director && ratingWeight > 0) {
         const existing = directorMap.get(director);
         if (existing) {
           existing.ratings.push(ratingWeight);
+          // Update ID if we found one (some older movies might not have it)
+          if (directorId && !existing.id) {
+            existing.id = directorId;
+          }
         } else {
-          directorMap.set(director, { name: director, ratings: [ratingWeight] });
+          directorMap.set(director, { id: directorId, name: director, ratings: [ratingWeight] });
         }
       }
     });
@@ -271,6 +277,7 @@ class UserPreferencesService {
     const likedDirectors: DirectorPreference[] = Array.from(directorMap.values())
       .filter(d => d.ratings.length >= 1 && d.ratings.reduce((a, b) => a + b, 0) / d.ratings.length >= 2.5)
       .map(d => ({
+        id: d.id,
         name: d.name,
         count: d.ratings.length,
         avgRating: d.ratings.reduce((a, b) => a + b, 0) / d.ratings.length,

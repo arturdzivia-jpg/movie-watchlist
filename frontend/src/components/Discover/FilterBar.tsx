@@ -1,5 +1,12 @@
 import React from 'react';
 import { TMDB_GENRES, MOVIE_STYLES, MovieStyle } from '../../constants/genres';
+import type { MetadataType } from '../Common';
+
+interface ActivePersonFilter {
+  id: number;
+  name: string;
+  type: MetadataType;
+}
 
 interface FilterBarProps {
   selectedGenre: number | null;
@@ -7,6 +14,9 @@ interface FilterBarProps {
   onGenreChange: (genre: number | null) => void;
   onStyleChange: (style: MovieStyle) => void;
   hideStyleFilter?: boolean;
+  // New props for person/company filters
+  activePersonFilter?: ActivePersonFilter | null;
+  onClearPersonFilter?: () => void;
 }
 
 const FilterBar: React.FC<FilterBarProps> = ({
@@ -14,13 +24,27 @@ const FilterBar: React.FC<FilterBarProps> = ({
   selectedStyle,
   onGenreChange,
   onStyleChange,
-  hideStyleFilter = false
+  hideStyleFilter = false,
+  activePersonFilter,
+  onClearPersonFilter
 }) => {
-  const hasActiveFilters = selectedGenre !== null || (!hideStyleFilter && selectedStyle !== 'all');
+  const hasActiveFilters = selectedGenre !== null || (!hideStyleFilter && selectedStyle !== 'all') || activePersonFilter;
 
   const clearFilters = () => {
     onGenreChange(null);
     onStyleChange('all');
+    if (onClearPersonFilter) {
+      onClearPersonFilter();
+    }
+  };
+
+  const getPersonFilterLabel = (type: MetadataType): string => {
+    switch (type) {
+      case 'actor': return 'Actor';
+      case 'director': return 'Director';
+      case 'company': return 'Studio';
+      default: return '';
+    }
   };
 
   return (
@@ -86,6 +110,22 @@ const FilterBar: React.FC<FilterBarProps> = ({
       {/* Active filters summary */}
       {hasActiveFilters && (
         <div className="mt-3 flex flex-wrap gap-2">
+          {activePersonFilter && (
+            <span className="bg-green-600/20 text-green-400 px-2 py-1 rounded text-xs border border-green-600/30 flex items-center gap-1">
+              {getPersonFilterLabel(activePersonFilter.type)}: {activePersonFilter.name}
+              {onClearPersonFilter && (
+                <button
+                  onClick={onClearPersonFilter}
+                  className="ml-1 hover:text-white"
+                  title="Clear filter"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </span>
+          )}
           {selectedGenre && (
             <span className="bg-blue-600/20 text-blue-400 px-2 py-1 rounded text-xs border border-blue-600/30">
               {TMDB_GENRES.find(g => g.id === selectedGenre)?.name}

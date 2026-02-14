@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useSearchParams, useLocation } from 'react-router-dom';
 import { discoverAPI, userMoviesAPI, watchlistAPI, DiscoverMovie, DiscoverCategory, Rating, moviesAPI, TMDBMovie, DiscoverFilters, MovieStyle } from '../services/api';
 import MovieCard from '../components/Movies/MovieCard';
 import MovieDetailModal from '../components/Movies/MovieDetailModal';
 import { SwipeCardStack, SwipeControls, RatingModal, FilterBar } from '../components/Discover';
 import { useSwipeDiscover } from '../hooks/useSwipeDiscover';
 import type { SwipeDirection } from '../types/discover';
+import type { MetadataType } from '../components/Common';
 
 type ViewMode = 'grid' | 'swipe';
 
@@ -30,6 +32,10 @@ const createEmptyCache = (): CategoryCache => ({
 });
 
 const Recommendations: React.FC = () => {
+  // URL search params for filter state
+  const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
+
   // Toast notification state
   const [toast, setToast] = useState<{ message: string; visible: boolean }>({ message: '', visible: false });
 
@@ -64,11 +70,52 @@ const Recommendations: React.FC = () => {
   // Movie detail modal state
   const [detailModal, setDetailModal] = useState<{ movie: DiscoverMovie | TMDBMovie; isOpen: boolean } | null>(null);
 
-  // Filter state
-  const [filters, setFilters] = useState<DiscoverFilters>({
-    genre: null,
-    style: 'all' as MovieStyle
-  });
+  // Filter name from router state (passed from MetadataLink)
+  const [filterDisplayInfo, setFilterDisplayInfo] = useState<{ name: string; type: MetadataType } | null>(null);
+
+  // Initialize filters from URL params
+  const getFiltersFromUrl = useCallback((): DiscoverFilters => {
+    return {
+      genre: searchParams.get('genre') ? parseInt(searchParams.get('genre')!) : null,
+      style: (searchParams.get('style') as MovieStyle) || 'all',
+      actor: searchParams.get('actor') ? parseInt(searchParams.get('actor')!) : null,
+      director: searchParams.get('director') ? parseInt(searchParams.get('director')!) : null,
+      company: searchParams.get('company') ? parseInt(searchParams.get('company')!) : null
+    };
+  }, [searchParams]);
+
+  // Filter state - initialized from URL
+  const [filters, setFilters] = useState<DiscoverFilters>(getFiltersFromUrl);
+
+  // Update filters when URL changes (e.g., from MetadataLink navigation)
+  useEffect(() => {
+    const urlFilters = getFiltersFromUrl();
+    setFilters(urlFilters);
+
+    // Get filter name from router state if available
+    const state = location.state as { filterName?: string; filterType?: MetadataType } | null;
+    if (state?.filterName && state?.filterType) {
+      setFilterDisplayInfo({ name: state.filterName, type: state.filterType });
+    } else if (!urlFilters.actor && !urlFilters.director && !urlFilters.company) {
+      // Clear display info if no person/company filters
+      setFilterDisplayInfo(null);
+    }
+  }, [searchParams, location.state, getFiltersFromUrl]);
+
+  // Sync URL with filters when filters change via UI (not URL navigation)
+  const updateFilters = useCallback((newFilters: DiscoverFilters) => {
+    setFilters(newFilters);
+
+    // Update URL params
+    const params = new URLSearchParams();
+    if (newFilters.genre) params.set('genre', String(newFilters.genre));
+    if (newFilters.style && newFilters.style !== 'all') params.set('style', newFilters.style);
+    if (newFilters.actor) params.set('actor', String(newFilters.actor));
+    if (newFilters.director) params.set('director', String(newFilters.director));
+    if (newFilters.company) params.set('company', String(newFilters.company));
+
+    setSearchParams(params, { replace: true });
+  }, [setSearchParams]);
 
   // Track filter version to force reload when filters change
   const [filterVersion, setFilterVersion] = useState(0);
@@ -77,7 +124,10 @@ const Recommendations: React.FC = () => {
   // Clear cache and bump version when filters change
   useEffect(() => {
     const filtersChanged = prevFiltersRef.current.genre !== filters.genre ||
-                           prevFiltersRef.current.style !== filters.style;
+                           prevFiltersRef.current.style !== filters.style ||
+                           prevFiltersRef.current.actor !== filters.actor ||
+                           prevFiltersRef.current.director !== filters.director ||
+                           prevFiltersRef.current.company !== filters.company;
 
     if (filtersChanged) {
       prevFiltersRef.current = filters;
@@ -93,7 +143,7 @@ const Recommendations: React.FC = () => {
       // Bump version to trigger reload in the other effect
       setFilterVersion(v => v + 1);
     }
-  }, [filters.genre, filters.style]);
+  }, [filters.genre, filters.style, filters.actor, filters.director, filters.company]);
 
   // View mode state (persisted to localStorage)
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
@@ -403,8 +453,13 @@ const Recommendations: React.FC = () => {
           <FilterBar
             selectedGenre={filters.genre ?? null}
             selectedStyle={filters.style ?? 'all'}
-            onGenreChange={(genre) => setFilters(f => ({ ...f, genre }))}
-            onStyleChange={(style) => setFilters(f => ({ ...f, style }))}
+            onGenreChange={(genre) => updateFilters({ ...filters, genre })}
+            onStyleChange={(style) => updateFilters({ ...filters, style })}
+            activePersonFilter={filterDisplayInfo ? { id: filters.actor || filters.director || filters.company || 0, name: filterDisplayInfo.name, type: filterDisplayInfo.type } : null}
+            onClearPersonFilter={() => {
+              updateFilters({ ...filters, actor: null, director: null, company: null });
+              setFilterDisplayInfo(null);
+            }}
           />
 
           <div className="bg-slate-800 rounded-lg p-4 sm:p-6 mb-6 border border-slate-700">
@@ -553,9 +608,14 @@ const Recommendations: React.FC = () => {
             <FilterBar
               selectedGenre={filters.genre ?? null}
               selectedStyle={filters.style ?? 'all'}
-              onGenreChange={(genre) => setFilters(f => ({ ...f, genre }))}
-              onStyleChange={(style) => setFilters(f => ({ ...f, style }))}
+              onGenreChange={(genre) => updateFilters({ ...filters, genre })}
+              onStyleChange={(style) => updateFilters({ ...filters, style })}
               hideStyleFilter
+              activePersonFilter={filterDisplayInfo ? { id: filters.actor || filters.director || filters.company || 0, name: filterDisplayInfo.name, type: filterDisplayInfo.type } : null}
+              onClearPersonFilter={() => {
+                updateFilters({ ...filters, actor: null, director: null, company: null });
+                setFilterDisplayInfo(null);
+              }}
             />
           </div>
 

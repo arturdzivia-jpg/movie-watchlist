@@ -24,6 +24,11 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
     const genre = req.query.genre ? parseInt(req.query.genre as string) : null;
     const style = (req.query.style as MovieStyle) || 'all';
 
+    // New filter params for clickable metadata
+    const actor = req.query.actor ? parseInt(req.query.actor as string) : null;
+    const director = req.query.director ? parseInt(req.query.director as string) : null;
+    const company = req.query.company ? parseInt(req.query.company as string) : null;
+
     // Validate category
     const validCategories: DiscoverCategory[] = ['for_you', 'popular', 'new_releases', 'top_rated'];
     if (!validCategories.includes(category)) {
@@ -101,8 +106,80 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
       return baseThreshold;
     };
 
-    if (category === 'for_you') {
-      // Use existing recommendation service
+    // Check if we have person/company filters - these always use TMDB discover
+    const hasPersonOrCompanyFilter = actor || director || company;
+
+    if (hasPersonOrCompanyFilter || category !== 'for_you') {
+      // Use TMDB discover endpoint for person/company filters or non-personalized categories
+      const today = new Date();
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+      const todayStr = today.toISOString().split('T')[0];
+      const sixMonthsAgoStr = sixMonthsAgo.toISOString().split('T')[0];
+
+      const genreFilter = buildGenreFilter();
+      const languageFilters = buildLanguageFilters();
+
+      let discoverParams: Parameters<typeof tmdbService.discoverMovies>[0] = {
+        page,
+        with_genres: genreFilter,
+        ...languageFilters
+      };
+
+      // Add person/company filters
+      if (actor) {
+        discoverParams.with_cast = String(actor);
+      }
+      if (director) {
+        discoverParams.with_crew = String(director);
+      }
+      if (company) {
+        discoverParams.with_companies = String(company);
+      }
+
+      // Category-specific params (default to popular sort for person/company filters)
+      const effectiveCategory = hasPersonOrCompanyFilter && category === 'for_you' ? 'popular' : category;
+
+      switch (effectiveCategory) {
+        case 'for_you':
+        case 'popular':
+          discoverParams = {
+            ...discoverParams,
+            sort_by: 'popularity.desc',
+            'vote_count.gte': getVoteCountThreshold(MIN_VOTE_COUNT)
+          };
+          break;
+        case 'new_releases':
+          discoverParams = {
+            ...discoverParams,
+            sort_by: 'primary_release_date.desc',
+            'primary_release_date.lte': todayStr,
+            'primary_release_date.gte': sixMonthsAgoStr,
+            'vote_count.gte': getVoteCountThreshold(MIN_VOTE_COUNT_NEW)
+          };
+          break;
+        case 'top_rated':
+          discoverParams = {
+            ...discoverParams,
+            sort_by: 'vote_average.desc',
+            'vote_count.gte': getVoteCountThreshold(MIN_VOTE_COUNT_TOP_RATED)
+          };
+          break;
+      }
+
+      const response = await tmdbService.discoverMovies(discoverParams);
+      let filteredMovies = response.results.filter(m => !excludedIds.has(m.id));
+
+      // For cartoons, filter out Japanese animation
+      if (style === 'cartoons') {
+        filteredMovies = filteredMovies.filter(m => m.original_language !== 'ja');
+      }
+
+      movies = filteredMovies;
+      totalPages = response.total_pages;
+    } else if (category === 'for_you') {
+      // Use existing recommendation service for personalized "For You" without person/company filters
       // Request more recommendations to allow for filtering
       const requestLimit = (genre || style !== 'all') ? 100 : 20;
       let recommendations = await recommendationService.generateRecommendations(userId, requestLimit, page);
@@ -159,61 +236,6 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
         movies = fallbackMovies;
         totalPages = fallbackResponse.total_pages;
       }
-    } else {
-      // Get date range for new releases (last 6 months)
-      const today = new Date();
-      const sixMonthsAgo = new Date();
-      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-
-      const todayStr = today.toISOString().split('T')[0];
-      const sixMonthsAgoStr = sixMonthsAgo.toISOString().split('T')[0];
-
-      const genreFilter = buildGenreFilter();
-      const languageFilters = buildLanguageFilters();
-
-      let discoverParams: Parameters<typeof tmdbService.discoverMovies>[0] = {
-        page,
-        with_genres: genreFilter,
-        ...languageFilters
-      };
-
-      switch (category) {
-        case 'popular':
-          discoverParams = {
-            ...discoverParams,
-            sort_by: 'popularity.desc',
-            'vote_count.gte': getVoteCountThreshold(MIN_VOTE_COUNT)
-          };
-          break;
-        case 'new_releases':
-          discoverParams = {
-            ...discoverParams,
-            sort_by: 'primary_release_date.desc',
-            'primary_release_date.lte': todayStr,
-            'primary_release_date.gte': sixMonthsAgoStr,
-            'vote_count.gte': getVoteCountThreshold(MIN_VOTE_COUNT_NEW)
-          };
-          break;
-        case 'top_rated':
-          discoverParams = {
-            ...discoverParams,
-            sort_by: 'vote_average.desc',
-            'vote_count.gte': getVoteCountThreshold(MIN_VOTE_COUNT_TOP_RATED)
-          };
-          break;
-      }
-
-      const response = await tmdbService.discoverMovies(discoverParams);
-      let filteredMovies = response.results.filter(m => !excludedIds.has(m.id));
-
-      // For cartoons, filter out Japanese animation (since TMDB doesn't support without_original_language)
-      // TMDB discover endpoint does return original_language in the response
-      if (style === 'cartoons') {
-        filteredMovies = filteredMovies.filter(m => m.original_language !== 'ja');
-      }
-
-      movies = filteredMovies;
-      totalPages = response.total_pages;
     }
 
     res.json({

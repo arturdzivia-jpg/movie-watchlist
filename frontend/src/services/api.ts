@@ -57,8 +57,10 @@ export interface Movie {
   releaseDate: string | null;
   genres: { id: number; name: string }[] | null;
   director: string | null;
+  directorId: number | null;
   cast: { id: number; name: string; character: string }[] | null;
   runtime: number | null;
+  productionCompanies: { id: number; name: string }[] | null;
 }
 
 export type Rating = 'NOT_INTERESTED' | 'DISLIKE' | 'OK' | 'LIKE' | 'SUPER_LIKE';
@@ -119,6 +121,9 @@ export interface DiscoverResponse {
 export interface DiscoverFilters {
   genre?: number | null;
   style?: MovieStyle;
+  actor?: number | null;
+  director?: number | null;
+  company?: number | null;
 }
 
 // User Preferences Types
@@ -131,6 +136,7 @@ export interface GenrePreference {
 }
 
 export interface DirectorPreference {
+  id: number | null;
   name: string;
   count: number;
   avgRating: number;
@@ -274,7 +280,10 @@ export const discoverAPI = {
         category,
         page,
         genre: filters?.genre ?? undefined,
-        style: filters?.style && filters.style !== 'all' ? filters.style : undefined
+        style: filters?.style && filters.style !== 'all' ? filters.style : undefined,
+        actor: filters?.actor ?? undefined,
+        director: filters?.director ?? undefined,
+        company: filters?.company ?? undefined
       }
     })
 };
