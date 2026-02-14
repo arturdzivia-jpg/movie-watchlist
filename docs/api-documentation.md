@@ -784,6 +784,89 @@ Returns empty array if user hasn't rated enough movies.
 
 ---
 
+### Discover
+
+#### Get Discover Movies
+
+**GET** `/api/discover`
+
+**Description:** Get movies by category with optional filters. Supports personalized "For You" recommendations, popular movies, new releases, and top-rated films.
+
+**Authentication:** Required
+
+**Query Parameters:**
+- `category` (optional): Filter category
+  - `for_you` (default): Personalized recommendations based on user's ratings
+  - `popular`: Popular movies sorted by popularity
+  - `new_releases`: Movies released in the last 6 months
+  - `top_rated`: Highest rated movies with significant vote counts
+- `page` (optional): Page number for pagination, default 1
+- `genre` (optional): TMDB genre ID to filter by (e.g., 28 for Action)
+- `style` (optional): Content style filter
+  - `all` (default): All content
+  - `movies`: Exclude animation
+  - `anime`: Animation + Japanese language
+  - `cartoons`: Animation excluding Japanese content
+- `actor` (optional): TMDB person ID to filter by actor
+- `director` (optional): TMDB person ID to filter by director
+- `company` (optional): TMDB company ID to filter by production studio
+
+**Examples:**
+```
+GET /api/discover?category=popular&page=1
+GET /api/discover?category=for_you&genre=28
+GET /api/discover?category=new_releases&style=anime
+GET /api/discover?actor=500&category=popular
+GET /api/discover?director=525&genre=878
+GET /api/discover?company=420
+```
+
+**Success Response (200):**
+```json
+{
+  "movies": [
+    {
+      "id": 299537,
+      "title": "Avengers: Endgame",
+      "overview": "After the devastating events...",
+      "poster_path": "/or06FN3Dka5tukK1e9sl16pB3iy.jpg",
+      "backdrop_path": "/7RyHsO4yDXtBv1zUU3mTpHeQ0d5.jpg",
+      "release_date": "2019-04-24",
+      "genre_ids": [28, 12, 878],
+      "vote_average": 8.3,
+      "vote_count": 22847,
+      "popularity": 98.76,
+      "original_language": "en"
+    }
+  ],
+  "page": 1,
+  "total_pages": 50,
+  "category": "popular"
+}
+```
+
+**Notes:**
+- Movies the user has already rated or added to watchlist are automatically excluded
+- The `for_you` category uses the recommendation engine for personalized results
+- Style filters (anime/cartoons) use the Animation genre (ID 16) combined with language filtering
+- Actor/director/company filters use TMDB person/company IDs from metadata links
+
+**Error Responses:**
+
+**400 Bad Request:**
+```json
+{
+  "error": "Invalid category"
+}
+```
+```json
+{
+  "error": "Invalid style"
+}
+```
+
+---
+
 ## Error Codes
 
 ### HTTP Status Codes

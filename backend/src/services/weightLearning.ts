@@ -1,5 +1,6 @@
 import prisma from '../config/database';
 import { Rating } from '@prisma/client';
+import { WEIGHT_LEARNING } from '../config/constants';
 
 interface WeightMultipliers {
   genreWeight: number;
@@ -12,15 +13,14 @@ interface WeightMultipliers {
   eraWeight: number;
 }
 
-// Minimum ratings needed before learning weights
-const MIN_RATINGS_FOR_LEARNING = 10;
-
-// Recalculate weights after this many new ratings
-const RECALC_THRESHOLD = 5;
-
-// Weight bounds (multipliers)
-const MIN_WEIGHT = 0.5;
-const MAX_WEIGHT = 2.0;
+// Use centralized constants
+const {
+  MIN_RATINGS_FOR_LEARNING,
+  RECALC_THRESHOLD,
+  MIN_WEIGHT,
+  MAX_WEIGHT,
+  DEBOUNCE_MS
+} = WEIGHT_LEARNING;
 
 // Convert rating to numeric value
 function ratingToValue(rating: Rating): number {
@@ -142,6 +142,12 @@ function calculateRecencyCorrelation(allMovies: any[]): number {
 }
 
 class WeightLearningService {
+  /**
+   * Pending weight update timers (debounce map)
+   * Prevents multiple rapid ratings from triggering overlapping calculations
+   */
+  private pendingUpdates = new Map<string, NodeJS.Timeout>();
+
   /**
    * Calculate and store personalized weights for a user
    */
@@ -320,9 +326,32 @@ class WeightLearningService {
   }
 
   /**
-   * Increment rating count and recalculate if threshold reached
+   * Handle new rating with debounce
+   * Prevents multiple rapid ratings from triggering overlapping calculations
    */
   async onNewRating(userId: string): Promise<void> {
+    // Cancel any pending calculation for this user
+    if (this.pendingUpdates.has(userId)) {
+      clearTimeout(this.pendingUpdates.get(userId)!);
+    }
+
+    // Schedule new calculation with debounce
+    const timeout = setTimeout(async () => {
+      this.pendingUpdates.delete(userId);
+      try {
+        await this.processRatingUpdate(userId);
+      } catch (error) {
+        console.error(`Weight learning error for user ${userId}:`, error);
+      }
+    }, DEBOUNCE_MS);
+
+    this.pendingUpdates.set(userId, timeout);
+  }
+
+  /**
+   * Process the actual rating update (called after debounce)
+   */
+  private async processRatingUpdate(userId: string): Promise<void> {
     const weights = await prisma.userPreferenceWeights.findUnique({
       where: { userId }
     });
@@ -348,6 +377,16 @@ class WeightLearningService {
         data: { ratingCount: newCount }
       });
     }
+  }
+
+  /**
+   * Clear pending updates (useful for testing or shutdown)
+   */
+  clearPendingUpdates(): void {
+    for (const timeout of this.pendingUpdates.values()) {
+      clearTimeout(timeout);
+    }
+    this.pendingUpdates.clear();
   }
 }
 

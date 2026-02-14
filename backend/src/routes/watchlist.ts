@@ -2,7 +2,8 @@ import express, { Response } from 'express';
 import prisma from '../config/database';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { Priority, Rating } from '@prisma/client';
-import tmdbService from '../services/tmdb';
+import { cacheMovieDetails } from '../utils/movieCache';
+import { validateRating, validatePriority, validateTmdbId } from '../utils/validators';
 
 const router = express.Router();
 
@@ -34,50 +35,22 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
     const userId = req.user!.userId;
     const { tmdbId, priority } = req.body;
 
-    if (!tmdbId) {
-      return res.status(400).json({ error: 'tmdbId is required' });
+    // Validate TMDB ID
+    const tmdbIdValidation = validateTmdbId(tmdbId);
+    if (!tmdbIdValidation.isValid) {
+      return res.status(400).json({ error: tmdbIdValidation.error });
     }
 
-    // Fetch and cache movie details
-    const tmdbMovie = await tmdbService.getMovieDetails(tmdbId);
+    // Validate priority
+    const priorityValidation = validatePriority(priority, 'MEDIUM');
+    if (!priorityValidation.isValid) {
+      return res.status(400).json({ error: priorityValidation.error });
+    }
 
-    const director = tmdbMovie.credits?.crew.find(
-      person => person.job === 'Director'
-    )?.name || null;
-
-    const cast = tmdbMovie.credits?.cast.slice(0, 10).map(actor => ({
-      id: actor.id,
-      name: actor.name,
-      character: actor.character
-    })) || [];
-
-    // Upsert movie in database
-    const movie = await prisma.movie.upsert({
-      where: { tmdbId },
-      update: {
-        title: tmdbMovie.title,
-        overview: tmdbMovie.overview,
-        posterPath: tmdbMovie.poster_path,
-        backdropPath: tmdbMovie.backdrop_path,
-        releaseDate: tmdbMovie.release_date,
-        genres: tmdbMovie.genres,
-        director,
-        cast,
-        runtime: tmdbMovie.runtime,
-        lastUpdated: new Date()
-      },
-      create: {
-        tmdbId,
-        title: tmdbMovie.title,
-        overview: tmdbMovie.overview,
-        posterPath: tmdbMovie.poster_path,
-        backdropPath: tmdbMovie.backdrop_path,
-        releaseDate: tmdbMovie.release_date,
-        genres: tmdbMovie.genres,
-        director,
-        cast,
-        runtime: tmdbMovie.runtime
-      }
+    // Cache movie details (using shared utility with all fields)
+    const movie = await cacheMovieDetails(tmdbIdValidation.value!, {
+      includeKeywords: false,
+      forceRefresh: false
     });
 
     // Check if already in watchlist
@@ -94,26 +67,12 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: 'Movie already in watchlist' });
     }
 
-    // Validate priority if provided
-    let validatedPriority: Priority = 'MEDIUM';
-    if (priority) {
-      if (typeof priority !== 'string') {
-        return res.status(400).json({ error: 'Priority must be a string' });
-      }
-      const normalizedPriority = priority.toUpperCase();
-      const validPriorities: Priority[] = ['LOW', 'MEDIUM', 'HIGH'];
-      if (!validPriorities.includes(normalizedPriority as Priority)) {
-        return res.status(400).json({ error: 'Invalid priority value. Must be one of: LOW, MEDIUM, HIGH' });
-      }
-      validatedPriority = normalizedPriority as Priority;
-    }
-
     // Add to watchlist
     const watchlistItem = await prisma.watchlist.create({
       data: {
         userId,
         movieId: movie.id,
-        priority: validatedPriority
+        priority: priorityValidation.value!
       },
       include: {
         movie: true
@@ -159,14 +118,9 @@ router.post('/:id/watched', authenticate, async (req: AuthRequest, res: Response
     const { rating } = req.body;
 
     // Validate rating input
-    if (!rating || typeof rating !== 'string') {
-      return res.status(400).json({ error: 'Rating is required and must be a string' });
-    }
-
-    const validRatings = ['NOT_INTERESTED', 'DISLIKE', 'OK', 'LIKE', 'SUPER_LIKE'];
-    const normalizedRating = rating.toUpperCase();
-    if (!validRatings.includes(normalizedRating)) {
-      return res.status(400).json({ error: 'Invalid rating value. Must be one of: NOT_INTERESTED, DISLIKE, OK, LIKE, SUPER_LIKE' });
+    const ratingValidation = validateRating(rating);
+    if (!ratingValidation.isValid) {
+      return res.status(400).json({ error: ratingValidation.error });
     }
 
     // Get watchlist item
@@ -188,7 +142,7 @@ router.post('/:id/watched', authenticate, async (req: AuthRequest, res: Response
         data: {
           userId,
           movieId: watchlistItem.movieId,
-          rating: normalizedRating as Rating,
+          rating: ratingValidation.value!,
           watched: true
         },
         include: {

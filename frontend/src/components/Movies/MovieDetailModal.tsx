@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, memo } from 'react';
 import { TMDBMovie, Movie, Rating, moviesAPI, CastMember } from '../../services/api';
 import { MetadataLink } from '../Common';
+import { RATING_BUTTONS } from '../../constants/ratings';
 
 interface MovieDetailModalProps {
   movie: TMDBMovie | Movie;
@@ -48,12 +49,8 @@ const getTmdbId = (movie: TMDBMovie | Movie): number => {
   return isTMDBMovie(movie) ? movie.id : movie.tmdbId;
 };
 
-const ratingButtons: { rating: Rating; emoji: string; label: string; color: string }[] = [
-  { rating: 'DISLIKE', emoji: '', label: 'Dislike', color: 'bg-gray-600 hover:bg-gray-700' },
-  { rating: 'OK', emoji: '', label: 'OK', color: 'bg-yellow-600 hover:bg-yellow-700' },
-  { rating: 'LIKE', emoji: '', label: 'Like', color: 'bg-green-600 hover:bg-green-700' },
-  { rating: 'SUPER_LIKE', emoji: '', label: 'Love', color: 'bg-red-600 hover:bg-red-700' }
-];
+// Use shared rating button configuration
+const ratingButtons = RATING_BUTTONS;
 
 // Person placeholder SVG for missing profile photos
 const PersonPlaceholder: React.FC<{ className?: string }> = ({ className }) => (
@@ -71,7 +68,7 @@ const PlayButton: React.FC = () => (
   </div>
 );
 
-const MovieDetailModal: React.FC<MovieDetailModalProps> = ({
+const MovieDetailModal: React.FC<MovieDetailModalProps> = memo(({
   movie,
   tmdbId,
   userRating,
@@ -425,7 +422,7 @@ const MovieDetailModal: React.FC<MovieDetailModalProps> = ({
                       key={btn.rating}
                       onClick={() => onRate?.(btn.rating)}
                       disabled={isProcessing}
-                      className={`${btn.color} text-white px-3 py-3 sm:py-3 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex flex-col items-center gap-1 min-h-[56px] sm:min-h-[48px]`}
+                      className={`${btn.bgColor} text-white px-3 py-3 sm:py-3 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex flex-col items-center gap-1 min-h-[56px] sm:min-h-[48px]`}
                     >
                       <span className="text-lg">{btn.emoji}</span>
                       <span>{btn.label}</span>
@@ -452,7 +449,7 @@ const MovieDetailModal: React.FC<MovieDetailModalProps> = ({
                       key={btn.rating}
                       onClick={() => onRate?.(btn.rating)}
                       disabled={isProcessing}
-                      className={`${btn.color} text-white px-3 py-3 sm:py-3 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex flex-col items-center gap-1 min-h-[56px] sm:min-h-[48px]`}
+                      className={`${btn.bgColor} text-white px-3 py-3 sm:py-3 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex flex-col items-center gap-1 min-h-[56px] sm:min-h-[48px]`}
                     >
                       <span className="text-lg">{btn.emoji}</span>
                       <span>{btn.label}</span>
@@ -482,6 +479,8 @@ const MovieDetailModal: React.FC<MovieDetailModalProps> = ({
       </div>
     </div>
   );
-};
+});
+
+MovieDetailModal.displayName = 'MovieDetailModal';
 
 export default MovieDetailModal;

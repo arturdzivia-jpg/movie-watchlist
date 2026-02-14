@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { UserMovie, Rating } from '../../services/api';
 import { MetadataLink } from '../Common';
+import { RATING_CONFIG, RATING_BUTTONS } from '../../constants/ratings';
 
 interface Genre {
   id: number;
@@ -13,7 +14,7 @@ interface UserMovieCardProps {
   onDelete?: (id: string) => void;
 }
 
-const UserMovieCard: React.FC<UserMovieCardProps> = ({ userMovie, onUpdateRating, onDelete }) => {
+const UserMovieCard: React.FC<UserMovieCardProps> = memo(({ userMovie, onUpdateRating, onDelete }) => {
   const { movie, rating } = userMovie;
 
   const posterUrl = movie.posterPath
@@ -22,18 +23,7 @@ const UserMovieCard: React.FC<UserMovieCardProps> = ({ userMovie, onUpdateRating
 
   const year = movie.releaseDate ? new Date(movie.releaseDate).getFullYear() : 'N/A';
 
-  const ratingConfig: Record<Rating, { emoji: string; label: string; color: string }> = {
-    NOT_INTERESTED: { emoji: '🚫', label: 'Not Interested', color: 'bg-slate-600' },
-    DISLIKE: { emoji: '👎', label: 'Dislike', color: 'bg-gray-600' },
-    OK: { emoji: '😐', label: 'OK', color: 'bg-yellow-600' },
-    LIKE: { emoji: '👍', label: 'Like', color: 'bg-green-600' },
-    SUPER_LIKE: { emoji: '❤️', label: 'Love', color: 'bg-red-600' }
-  };
-
-  const currentRating = ratingConfig[rating];
-
-  // Only show watched ratings in the dropdown (NOT_INTERESTED is for swipe-left only)
-  const allRatings: Rating[] = ['DISLIKE', 'OK', 'LIKE', 'SUPER_LIKE'];
+  const currentRating = RATING_CONFIG[rating];
 
   return (
     <div className="bg-slate-800 rounded-lg overflow-hidden shadow-lg border border-slate-700">
@@ -55,7 +45,7 @@ const UserMovieCard: React.FC<UserMovieCardProps> = ({ userMovie, onUpdateRating
               <h3 className="text-white font-semibold text-base sm:text-lg truncate">{movie.title}</h3>
               <p className="text-slate-400 text-sm">{year}</p>
             </div>
-            <div className={`${currentRating.color} text-white px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium flex items-center space-x-1 self-start flex-shrink-0`}>
+            <div className={`${currentRating.bgColor.split(' ')[0]} text-white px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium flex items-center space-x-1 self-start flex-shrink-0`}>
               <span aria-hidden="true">{currentRating.emoji}</span>
               <span>{currentRating.label}</span>
             </div>
@@ -90,9 +80,9 @@ const UserMovieCard: React.FC<UserMovieCardProps> = ({ userMovie, onUpdateRating
               aria-label={`Change rating for ${movie.title}`}
               className="w-full sm:w-auto bg-slate-700 text-white px-3 py-2 sm:py-1 rounded text-sm border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px] sm:min-h-0"
             >
-              {allRatings.map((r) => (
-                <option key={r} value={r}>
-                  {ratingConfig[r].emoji} {ratingConfig[r].label}
+              {RATING_BUTTONS.map((btn) => (
+                <option key={btn.rating} value={btn.rating}>
+                  {btn.emoji} {btn.label}
                 </option>
               ))}
             </select>
@@ -111,6 +101,8 @@ const UserMovieCard: React.FC<UserMovieCardProps> = ({ userMovie, onUpdateRating
       </div>
     </div>
   );
-};
+});
+
+UserMovieCard.displayName = 'UserMovieCard';
 
 export default UserMovieCard;

@@ -1,7 +1,9 @@
 import express, { Request, Response } from 'express';
 import tmdbService from '../services/tmdb';
-import prisma from '../config/database';
 import { authenticate, AuthRequest } from '../middleware/auth';
+import { cacheMovieDetails } from '../utils/movieCache';
+import { validatePagination, validateTmdbId } from '../utils/validators';
+import { TMDB } from '../config/constants';
 
 const router = express.Router();
 
@@ -14,8 +16,7 @@ router.get('/search', authenticate, async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: 'Search query is required' });
     }
 
-    const parsedPage = page ? parseInt(page as string) : 1;
-    const pageNum = Math.max(1, Math.min(isNaN(parsedPage) ? 1 : parsedPage, 500)); // TMDB max is 500 pages
+    const { page: pageNum } = validatePagination(page, undefined, { maxPage: TMDB.MAX_PAGES });
     const results = await tmdbService.searchMovies(q, pageNum);
 
     res.json(results);
@@ -29,8 +30,7 @@ router.get('/search', authenticate, async (req: AuthRequest, res: Response) => {
 router.get('/popular', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const { page } = req.query;
-    const parsedPage = page ? parseInt(page as string) : 1;
-    const pageNum = Math.max(1, Math.min(isNaN(parsedPage) ? 1 : parsedPage, 500)); // TMDB max is 500 pages
+    const { page: pageNum } = validatePagination(page, undefined, { maxPage: TMDB.MAX_PAGES });
 
     const results = await tmdbService.getPopularMovies(pageNum);
 
@@ -45,80 +45,21 @@ router.get('/popular', authenticate, async (req: AuthRequest, res: Response) => 
 router.get('/:tmdbId', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const { tmdbId } = req.params;
-    const tmdbIdNum = parseInt(tmdbId);
 
-    if (isNaN(tmdbIdNum)) {
-      return res.status(400).json({ error: 'Invalid TMDB ID' });
+    // Validate TMDB ID
+    const tmdbIdValidation = validateTmdbId(tmdbId);
+    if (!tmdbIdValidation.isValid) {
+      return res.status(400).json({ error: tmdbIdValidation.error });
     }
 
-    // Check if movie is cached in database
-    let movie = await prisma.movie.findUnique({
-      where: { tmdbId: tmdbIdNum }
+    // Cache movie details using shared utility
+    const movie = await cacheMovieDetails(tmdbIdValidation.value!, {
+      includeKeywords: false,
+      forceRefresh: false
     });
 
-    // If not cached or outdated (30 days), fetch from TMDB
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-
-    // Check if cached data is missing new fields (backdropPath, cast with profilePath)
-    const needsRefresh = movie && (
-      movie.backdropPath === null ||
-      (Array.isArray(movie.cast) && movie.cast.length > 0 && !(movie.cast as any[])[0]?.profilePath)
-    );
-
-    if (!movie || movie.lastUpdated < thirtyDaysAgo || needsRefresh) {
-      const tmdbMovie = await tmdbService.getMovieDetails(tmdbIdNum);
-
-      // Extract director from crew (name and ID for filtering)
-      const directorInfo = tmdbMovie.credits?.crew.find(
-        person => person.job === 'Director'
-      );
-      const director = directorInfo?.name || null;
-      const directorId = directorInfo?.id || null;
-
-      // Extract top cast members with profile photos
-      const cast = tmdbMovie.credits?.cast.slice(0, 10).map(actor => ({
-        id: actor.id,
-        name: actor.name,
-        character: actor.character,
-        profilePath: actor.profile_path
-      })) || [];
-
-      // Upsert movie in database
-      movie = await prisma.movie.upsert({
-        where: { tmdbId: tmdbIdNum },
-        update: {
-          title: tmdbMovie.title,
-          overview: tmdbMovie.overview,
-          posterPath: tmdbMovie.poster_path,
-          backdropPath: tmdbMovie.backdrop_path,
-          releaseDate: tmdbMovie.release_date,
-          genres: tmdbMovie.genres,
-          director,
-          directorId,
-          cast,
-          runtime: tmdbMovie.runtime,
-          tagline: tmdbMovie.tagline || null,
-          lastUpdated: new Date()
-        },
-        create: {
-          tmdbId: tmdbIdNum,
-          title: tmdbMovie.title,
-          overview: tmdbMovie.overview,
-          posterPath: tmdbMovie.poster_path,
-          backdropPath: tmdbMovie.backdrop_path,
-          releaseDate: tmdbMovie.release_date,
-          genres: tmdbMovie.genres,
-          director,
-          directorId,
-          cast,
-          runtime: tmdbMovie.runtime,
-          tagline: tmdbMovie.tagline || null
-        }
-      });
-    }
-
     // Fetch videos (don't cache - trailers can be added/updated)
-    const videos = await tmdbService.getMovieVideos(tmdbIdNum);
+    const videos = await tmdbService.getMovieVideos(tmdbIdValidation.value!);
 
     // Find the best trailer (prefer official YouTube trailers)
     const trailer = videos.find(

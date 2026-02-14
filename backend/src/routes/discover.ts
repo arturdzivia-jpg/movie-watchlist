@@ -3,41 +3,43 @@ import { authenticate, AuthRequest } from '../middleware/auth';
 import recommendationService from '../services/recommendation';
 import tmdbService, { TMDBMovie } from '../services/tmdb';
 import prisma from '../config/database';
+import { validatePagination, validatePositiveInt } from '../utils/validators';
+import {
+  TMDB,
+  VALID_CATEGORIES,
+  VALID_STYLES,
+  DiscoverCategory,
+  MovieStyle
+} from '../config/constants';
 
 const router = express.Router();
-
-type DiscoverCategory = 'for_you' | 'popular' | 'new_releases' | 'top_rated';
-type MovieStyle = 'all' | 'movies' | 'anime' | 'cartoons';
-
-const MIN_VOTE_COUNT = 100;
-const MIN_VOTE_COUNT_TOP_RATED = 500;
-const MIN_VOTE_COUNT_NEW = 50;
-const MIN_VOTE_COUNT_ANIME = 10; // Lower threshold for anime/cartoons
-const ANIMATION_GENRE_ID = 16;
 
 // Get movies by category
 router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user!.userId;
     const category = (req.query.category as DiscoverCategory) || 'for_you';
-    const page = parseInt(req.query.page as string) || 1;
-    const genre = req.query.genre ? parseInt(req.query.genre as string) : null;
+    const { page } = validatePagination(req.query.page);
     const style = (req.query.style as MovieStyle) || 'all';
 
-    // New filter params for clickable metadata
-    const actor = req.query.actor ? parseInt(req.query.actor as string) : null;
-    const director = req.query.director ? parseInt(req.query.director as string) : null;
-    const company = req.query.company ? parseInt(req.query.company as string) : null;
+    // Validate optional numeric filters
+    const genreValidation = validatePositiveInt(req.query.genre, 'Genre');
+    const actorValidation = validatePositiveInt(req.query.actor, 'Actor');
+    const directorValidation = validatePositiveInt(req.query.director, 'Director');
+    const companyValidation = validatePositiveInt(req.query.company, 'Company');
+
+    const genre = genreValidation.value || null;
+    const actor = actorValidation.value || null;
+    const director = directorValidation.value || null;
+    const company = companyValidation.value || null;
 
     // Validate category
-    const validCategories: DiscoverCategory[] = ['for_you', 'popular', 'new_releases', 'top_rated'];
-    if (!validCategories.includes(category)) {
+    if (!VALID_CATEGORIES.includes(category)) {
       return res.status(400).json({ error: 'Invalid category' });
     }
 
     // Validate style
-    const validStyles: MovieStyle[] = ['all', 'movies', 'anime', 'cartoons'];
-    if (!validStyles.includes(style)) {
+    if (!VALID_STYLES.includes(style)) {
       return res.status(400).json({ error: 'Invalid style' });
     }
 
@@ -72,8 +74,8 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
 
       // Add animation genre for anime/cartoons
       if (style === 'anime' || style === 'cartoons') {
-        if (!genres.includes(ANIMATION_GENRE_ID)) {
-          genres.push(ANIMATION_GENRE_ID);
+        if (!genres.includes(TMDB.ANIMATION_GENRE_ID)) {
+          genres.push(TMDB.ANIMATION_GENRE_ID);
         }
       }
 
@@ -92,7 +94,7 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
           return {};
         case 'movies':
           // Exclude animation genre
-          return { without_genres: String(ANIMATION_GENRE_ID) };
+          return { without_genres: String(TMDB.ANIMATION_GENRE_ID) };
         default:
           return {};
       }
@@ -101,7 +103,7 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
     // Get the appropriate vote count threshold based on style
     const getVoteCountThreshold = (baseThreshold: number): number => {
       if (style === 'anime' || style === 'cartoons') {
-        return MIN_VOTE_COUNT_ANIME;
+        return TMDB.MIN_VOTE_COUNT_ANIME;
       }
       return baseThreshold;
     };
@@ -147,7 +149,7 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
           discoverParams = {
             ...discoverParams,
             sort_by: 'popularity.desc',
-            'vote_count.gte': getVoteCountThreshold(MIN_VOTE_COUNT)
+            'vote_count.gte': getVoteCountThreshold(TMDB.MIN_VOTE_COUNT)
           };
           break;
         case 'new_releases':
@@ -156,14 +158,14 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
             sort_by: 'primary_release_date.desc',
             'primary_release_date.lte': todayStr,
             'primary_release_date.gte': sixMonthsAgoStr,
-            'vote_count.gte': getVoteCountThreshold(MIN_VOTE_COUNT_NEW)
+            'vote_count.gte': getVoteCountThreshold(TMDB.MIN_VOTE_COUNT_NEW)
           };
           break;
         case 'top_rated':
           discoverParams = {
             ...discoverParams,
             sort_by: 'vote_average.desc',
-            'vote_count.gte': getVoteCountThreshold(MIN_VOTE_COUNT_TOP_RATED)
+            'vote_count.gte': getVoteCountThreshold(TMDB.MIN_VOTE_COUNT_TOP_RATED)
           };
           break;
       }
@@ -195,17 +197,17 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
       if (style === 'anime') {
         // Animation genre + Japanese language
         recommendations = recommendations.filter(movie =>
-          movie.genre_ids?.includes(ANIMATION_GENRE_ID) && movie.original_language === 'ja'
+          movie.genre_ids?.includes(TMDB.ANIMATION_GENRE_ID) && movie.original_language === 'ja'
         );
       } else if (style === 'cartoons') {
         // Animation genre but NOT Japanese
         recommendations = recommendations.filter(movie =>
-          movie.genre_ids?.includes(ANIMATION_GENRE_ID) && movie.original_language !== 'ja'
+          movie.genre_ids?.includes(TMDB.ANIMATION_GENRE_ID) && movie.original_language !== 'ja'
         );
       } else if (style === 'movies') {
         // Exclude animation
         recommendations = recommendations.filter(movie =>
-          !movie.genre_ids?.includes(ANIMATION_GENRE_ID)
+          !movie.genre_ids?.includes(TMDB.ANIMATION_GENRE_ID)
         );
       }
 
@@ -222,7 +224,7 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
           page,
           with_genres: genreFilter,
           sort_by: 'popularity.desc',
-          'vote_count.gte': getVoteCountThreshold(MIN_VOTE_COUNT),
+          'vote_count.gte': getVoteCountThreshold(TMDB.MIN_VOTE_COUNT),
           ...languageFilters
         });
 

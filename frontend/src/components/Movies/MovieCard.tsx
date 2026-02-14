@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { TMDBMovie, Rating } from '../../services/api';
+import { RATING_BUTTONS } from '../../constants/ratings';
 
 interface MovieCardProps {
   movie: TMDBMovie;
@@ -10,19 +11,12 @@ interface MovieCardProps {
   showActions?: boolean;
 }
 
-const MovieCard: React.FC<MovieCardProps> = ({ movie, onRate, onAddToWatchlist, onNotInterested, onClick, showActions = true }) => {
+const MovieCard: React.FC<MovieCardProps> = memo(({ movie, onRate, onAddToWatchlist, onNotInterested, onClick, showActions = true }) => {
   const posterUrl = movie.poster_path
     ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
     : '/placeholder-movie.png';
 
   const year = movie.release_date ? new Date(movie.release_date).getFullYear() : 'N/A';
-
-  const ratingButtons: { rating: Rating; emoji: string; label: string; color: string }[] = [
-    { rating: 'DISLIKE', emoji: '👎', label: 'Dislike', color: 'bg-gray-600 hover:bg-gray-700' },
-    { rating: 'OK', emoji: '😐', label: 'OK', color: 'bg-yellow-600 hover:bg-yellow-700' },
-    { rating: 'LIKE', emoji: '👍', label: 'Like', color: 'bg-green-600 hover:bg-green-700' },
-    { rating: 'SUPER_LIKE', emoji: '❤️', label: 'Love', color: 'bg-red-600 hover:bg-red-700' }
-  ];
 
   return (
     <div className="bg-slate-800 rounded-lg overflow-hidden shadow-lg border border-slate-700 hover:border-slate-600 transition-all">
@@ -54,12 +48,12 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onRate, onAddToWatchlist, 
         {showActions && (
           <div className="space-y-2">
             <div className="grid grid-cols-2 gap-2">
-              {ratingButtons.map((btn) => (
+              {RATING_BUTTONS.map((btn) => (
                 <button
                   key={btn.rating}
                   onClick={() => onRate?.(movie.id, btn.rating)}
                   aria-label={`Rate ${movie.title} as ${btn.label}`}
-                  className={`${btn.color} text-white px-3 py-2 rounded text-sm font-medium transition-colors flex items-center justify-center space-x-1`}
+                  className={`${btn.bgColor} text-white px-3 py-2 rounded text-sm font-medium transition-colors flex items-center justify-center space-x-1`}
                 >
                   <span aria-hidden="true">{btn.emoji}</span>
                   <span>{btn.label}</span>
@@ -91,6 +85,8 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onRate, onAddToWatchlist, 
       </div>
     </div>
   );
-};
+});
+
+MovieCard.displayName = 'MovieCard';
 
 export default MovieCard;

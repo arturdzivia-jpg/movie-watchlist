@@ -1,20 +1,13 @@
-import React from 'react';
-import { UserMovie, Rating } from '../../services/api';
+import React, { memo } from 'react';
+import { UserMovie } from '../../services/api';
+import { RATING_CONFIG } from '../../constants/ratings';
 
 interface UserMovieGridCardProps {
   userMovie: UserMovie;
   onClick?: () => void;
 }
 
-const ratingConfig: Record<Rating, { emoji: string; label: string }> = {
-  NOT_INTERESTED: { emoji: '🚫', label: 'Not Interested' },
-  DISLIKE: { emoji: '👎', label: 'Dislike' },
-  OK: { emoji: '😐', label: 'OK' },
-  LIKE: { emoji: '👍', label: 'Like' },
-  SUPER_LIKE: { emoji: '❤️', label: 'Love' }
-};
-
-const UserMovieGridCard: React.FC<UserMovieGridCardProps> = ({ userMovie, onClick }) => {
+const UserMovieGridCard: React.FC<UserMovieGridCardProps> = memo(({ userMovie, onClick }) => {
   const { movie, rating } = userMovie;
 
   const posterUrl = movie.posterPath
@@ -25,7 +18,7 @@ const UserMovieGridCard: React.FC<UserMovieGridCardProps> = ({ userMovie, onClic
     ? new Date(movie.releaseDate).getFullYear()
     : 'N/A';
 
-  const config = ratingConfig[rating];
+  const config = RATING_CONFIG[rating];
 
   return (
     <div
@@ -80,6 +73,8 @@ const UserMovieGridCard: React.FC<UserMovieGridCardProps> = ({ userMovie, onClic
       </div>
     </div>
   );
-};
+});
+
+UserMovieGridCard.displayName = 'UserMovieGridCard';
 
 export default UserMovieGridCard;

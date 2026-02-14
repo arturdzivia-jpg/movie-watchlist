@@ -1,9 +1,10 @@
 import express, { Response } from 'express';
 import prisma from '../config/database';
 import { authenticate, AuthRequest } from '../middleware/auth';
-import { Rating } from '@prisma/client';
-import tmdbService from '../services/tmdb';
+import { Rating, Prisma } from '@prisma/client';
 import weightLearningService from '../services/weightLearning';
+import { cacheMovieDetails } from '../utils/movieCache';
+import { validateRating, validateTmdbId } from '../utils/validators';
 
 const router = express.Router();
 
@@ -13,13 +14,16 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
     const userId = req.user!.userId;
     const { rating, sort } = req.query;
 
-    const where: any = { userId };
+    const where: Prisma.UserMovieWhereInput = { userId };
 
     if (rating && typeof rating === 'string') {
-      where.rating = rating.toUpperCase() as Rating;
+      const ratingValidation = validateRating(rating);
+      if (ratingValidation.isValid && ratingValidation.value) {
+        where.rating = ratingValidation.value;
+      }
     }
 
-    let orderBy: any = { createdAt: 'desc' };
+    let orderBy: Prisma.UserMovieOrderByWithRelationInput = { createdAt: 'desc' };
 
     if (sort === 'title') {
       orderBy = { movie: { title: 'asc' } };
@@ -50,106 +54,48 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
     const userId = req.user!.userId;
     const { tmdbId, rating, watched } = req.body;
 
-    if (!tmdbId || !rating) {
-      return res.status(400).json({ error: 'tmdbId and rating are required' });
+    // Validate TMDB ID
+    const tmdbIdValidation = validateTmdbId(tmdbId);
+    if (!tmdbIdValidation.isValid) {
+      return res.status(400).json({ error: tmdbIdValidation.error });
     }
 
-    // Validate rating type and value
-    if (typeof rating !== 'string') {
-      return res.status(400).json({ error: 'Rating must be a string' });
+    // Validate rating
+    const ratingValidation = validateRating(rating);
+    if (!ratingValidation.isValid) {
+      return res.status(400).json({ error: ratingValidation.error });
     }
 
-    const validRatings = ['NOT_INTERESTED', 'DISLIKE', 'OK', 'LIKE', 'SUPER_LIKE'];
-    const normalizedRating = rating.toUpperCase();
-    if (!validRatings.includes(normalizedRating)) {
-      return res.status(400).json({ error: 'Invalid rating value. Must be one of: NOT_INTERESTED, DISLIKE, OK, LIKE, SUPER_LIKE' });
-    }
+    // Use transaction to ensure atomicity
+    const userMovie = await prisma.$transaction(async (tx) => {
+      // Cache movie details with keywords for recommendation engine
+      const movie = await cacheMovieDetails(tmdbIdValidation.value!, {
+        includeKeywords: true,
+        forceRefresh: false
+      });
 
-    // Fetch and cache movie details with keywords
-    const tmdbMovie = await tmdbService.getEnhancedMovieDetails(tmdbId);
-
-    const directorInfo = tmdbMovie.credits?.crew.find(
-      person => person.job === 'Director'
-    );
-    const director = directorInfo?.name || null;
-    const directorId = directorInfo?.id || null;
-
-    const cast = tmdbMovie.credits?.cast.slice(0, 10).map(actor => ({
-      id: actor.id,
-      name: actor.name,
-      character: actor.character
-    })) || [];
-
-    // Extract collection info
-    const collectionId = tmdbMovie.belongs_to_collection?.id || null;
-    const collectionName = tmdbMovie.belongs_to_collection?.name || null;
-
-    // Extract production companies (top 5)
-    const productionCompanies = tmdbMovie.production_companies?.slice(0, 5).map(c => ({
-      id: c.id,
-      name: c.name
-    })) || [];
-
-    // Upsert movie in database
-    const movie = await prisma.movie.upsert({
-      where: { tmdbId },
-      update: {
-        title: tmdbMovie.title,
-        overview: tmdbMovie.overview,
-        posterPath: tmdbMovie.poster_path,
-        backdropPath: tmdbMovie.backdrop_path,
-        releaseDate: tmdbMovie.release_date,
-        genres: tmdbMovie.genres,
-        director,
-        directorId,
-        cast,
-        runtime: tmdbMovie.runtime,
-        keywords: (tmdbMovie.keywords || []) as any,
-        collectionId,
-        collectionName,
-        productionCompanies,
-        lastUpdated: new Date()
-      },
-      create: {
-        tmdbId,
-        title: tmdbMovie.title,
-        overview: tmdbMovie.overview,
-        posterPath: tmdbMovie.poster_path,
-        backdropPath: tmdbMovie.backdrop_path,
-        releaseDate: tmdbMovie.release_date,
-        genres: tmdbMovie.genres,
-        director,
-        directorId,
-        cast,
-        runtime: tmdbMovie.runtime,
-        keywords: (tmdbMovie.keywords || []) as any,
-        collectionId,
-        collectionName,
-        productionCompanies
-      }
-    });
-
-    // Create or update user movie
-    const userMovie = await prisma.userMovie.upsert({
-      where: {
-        userId_movieId: {
+      // Create or update user movie
+      return tx.userMovie.upsert({
+        where: {
+          userId_movieId: {
+            userId,
+            movieId: movie.id
+          }
+        },
+        update: {
+          rating: ratingValidation.value!,
+          watched: watched !== undefined ? watched : true
+        },
+        create: {
           userId,
-          movieId: movie.id
+          movieId: movie.id,
+          rating: ratingValidation.value!,
+          watched: watched !== undefined ? watched : true
+        },
+        include: {
+          movie: true
         }
-      },
-      update: {
-        rating: normalizedRating as Rating,
-        watched: watched !== undefined ? watched : true
-      },
-      create: {
-        userId,
-        movieId: movie.id,
-        rating: normalizedRating as Rating,
-        watched: watched !== undefined ? watched : true
-      },
-      include: {
-        movie: true
-      }
+      });
     });
 
     // Trigger weight learning update (async, don't wait)
@@ -171,18 +117,14 @@ router.put('/:id', authenticate, async (req: AuthRequest, res: Response) => {
     const { id } = req.params;
     const { rating, watched } = req.body;
 
-    const updateData: any = {};
+    const updateData: Prisma.UserMovieUpdateInput = {};
 
     if (rating) {
-      if (typeof rating !== 'string') {
-        return res.status(400).json({ error: 'Rating must be a string' });
+      const ratingValidation = validateRating(rating);
+      if (!ratingValidation.isValid) {
+        return res.status(400).json({ error: ratingValidation.error });
       }
-      const validRatings = ['NOT_INTERESTED', 'DISLIKE', 'OK', 'LIKE', 'SUPER_LIKE'];
-      const normalizedRating = rating.toUpperCase();
-      if (!validRatings.includes(normalizedRating)) {
-        return res.status(400).json({ error: 'Invalid rating value. Must be one of: NOT_INTERESTED, DISLIKE, OK, LIKE, SUPER_LIKE' });
-      }
-      updateData.rating = normalizedRating as Rating;
+      updateData.rating = ratingValidation.value!;
     }
 
     if (watched !== undefined) {
