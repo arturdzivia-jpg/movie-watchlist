@@ -4,6 +4,7 @@ import { RATING_BUTTONS } from '../../constants/ratings';
 
 interface MovieCardProps {
   movie: TMDBMovie;
+  userRating?: Rating | null;
   onRate?: (tmdbId: number, rating: Rating) => void;
   onAddToWatchlist?: (tmdbId: number) => void;
   onNotInterested?: (tmdbId: number) => void;
@@ -11,7 +12,7 @@ interface MovieCardProps {
   showActions?: boolean;
 }
 
-const MovieCard: React.FC<MovieCardProps> = memo(({ movie, onRate, onAddToWatchlist, onNotInterested, onClick, showActions = true }) => {
+const MovieCard: React.FC<MovieCardProps> = memo(({ movie, userRating, onRate, onAddToWatchlist, onNotInterested, onClick, showActions = true }) => {
   const posterUrl = movie.poster_path
     ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
     : '/placeholder-movie.png';
@@ -35,6 +36,11 @@ const MovieCard: React.FC<MovieCardProps> = memo(({ movie, onRate, onAddToWatchl
         <div className="absolute top-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-sm font-semibold">
           ⭐ {movie.vote_average.toFixed(1)}
         </div>
+        {userRating && userRating !== 'NOT_INTERESTED' && (
+          <div className="absolute top-2 left-2 bg-green-600 text-white px-2 py-1 rounded text-xs font-semibold">
+            ✓ In My Movies
+          </div>
+        )}
       </div>
 
       <div className="p-4">
@@ -53,7 +59,7 @@ const MovieCard: React.FC<MovieCardProps> = memo(({ movie, onRate, onAddToWatchl
                   key={btn.rating}
                   onClick={() => onRate?.(movie.id, btn.rating)}
                   aria-label={`Rate ${movie.title} as ${btn.label}`}
-                  className={`${btn.bgColor} text-white px-3 py-2 rounded text-sm font-medium transition-colors flex items-center justify-center space-x-1`}
+                  className={`${btn.bgColor} ${userRating === btn.rating ? 'ring-2 ring-white ring-offset-2 ring-offset-slate-800' : ''} text-white px-3 py-2 rounded text-sm font-medium transition-colors flex items-center justify-center space-x-1`}
                 >
                   <span aria-hidden="true">{btn.emoji}</span>
                   <span>{btn.label}</span>

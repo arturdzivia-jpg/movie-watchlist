@@ -605,6 +605,7 @@ const Discovery: React.FC = () => {
                       <div key={movie.id}>
                         <MovieCard
                           movie={movie}
+                          userRating={ratedMoviesMap.get(movie.id)?.rating}
                           onRate={handleRate}
                           onAddToWatchlist={handleAddToWatchlist}
                           onNotInterested={handleNotInterested}
@@ -655,6 +656,7 @@ const Discovery: React.FC = () => {
                     <MovieCard
                       key={movie.id}
                       movie={movie}
+                      userRating={ratedMoviesMap.get(movie.id)?.rating}
                       onRate={handleRate}
                       onAddToWatchlist={handleAddToWatchlist}
                       onNotInterested={handleNotInterested}
