@@ -1,6 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { userMoviesAPI, watchlistAPI } from '../services/api';
+import { userMoviesAPI, watchlistAPI, recommendationsAPI, UserPreferences } from '../services/api';
+
+// Helper to format runtime bucket
+const formatRuntime = (bucket: string): string => {
+  switch (bucket) {
+    case 'short': return 'Short films (< 90 min)';
+    case 'medium': return 'Medium length (90-120 min)';
+    case 'long': return 'Long films (120-150 min)';
+    case 'epic': return 'Epic length (> 150 min)';
+    default: return bucket;
+  }
+};
+
+// Helper to format rating style
+const formatRatingStyle = (style: string): { label: string; color: string } => {
+  switch (style) {
+    case 'generous': return { label: 'Generous Rater', color: 'bg-green-600' };
+    case 'critical': return { label: 'Critical Rater', color: 'bg-red-600' };
+    default: return { label: 'Balanced Rater', color: 'bg-blue-600' };
+  }
+};
 
 const Dashboard: React.FC = () => {
   const [stats, setStats] = useState({
@@ -11,6 +31,7 @@ const Dashboard: React.FC = () => {
     dislikes: 0,
     watchlistCount: 0
   });
+  const [preferences, setPreferences] = useState<UserPreferences | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,9 +42,10 @@ const Dashboard: React.FC = () => {
   const loadStats = async () => {
     try {
       setError(null);
-      const [moviesRes, watchlistRes] = await Promise.all([
+      const [moviesRes, watchlistRes, prefsRes] = await Promise.all([
         userMoviesAPI.getAll(),
-        watchlistAPI.getAll()
+        watchlistAPI.getAll(),
+        recommendationsAPI.getPreferences()
       ]);
 
       const movies = moviesRes.data;
@@ -37,6 +59,8 @@ const Dashboard: React.FC = () => {
         dislikes: movies.filter(m => m.rating === 'DISLIKE').length,
         watchlistCount: watchlist.length
       });
+
+      setPreferences(prefsRes.data);
     } catch (err) {
       console.error('Failed to load stats:', err);
       setError('Failed to load dashboard data. Please try again.');
@@ -184,6 +208,107 @@ const Dashboard: React.FC = () => {
         {stats.totalMovies === 0 && (
           <div className="mt-6 text-center">
             <p className="text-slate-400 mb-4">You haven't rated any movies yet!</p>
+            <Link
+              to="/recommendations"
+              className="inline-block px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+            >
+              Discover Movies
+            </Link>
+          </div>
+        )}
+      </div>
+
+      {/* Your Preferences Section */}
+      <div className="bg-slate-800 rounded-lg p-6 shadow-lg border border-slate-700 mt-6">
+        <h2 className="text-xl font-bold text-white mb-4">Your Preferences</h2>
+
+        {preferences && preferences.totalRatedMovies >= 5 ? (
+          <div className="space-y-6">
+            {/* Rating Style Badge */}
+            <div className="flex items-center gap-3">
+              <span className="text-slate-400 text-sm">Your rating style:</span>
+              <span className={`px-3 py-1 rounded-full text-white text-sm font-medium ${formatRatingStyle(preferences.ratingStyle).color}`}>
+                {formatRatingStyle(preferences.ratingStyle).label}
+              </span>
+            </div>
+
+            {/* Favorite Genres */}
+            {preferences.preferredGenres.length > 0 && (
+              <div>
+                <h3 className="text-slate-400 text-sm font-medium mb-2">Favorite Genres</h3>
+                <div className="flex flex-wrap gap-2">
+                  {preferences.preferredGenres.slice(0, 5).map((genre) => (
+                    <span
+                      key={genre.id}
+                      className="bg-blue-900/50 border border-blue-700/40 text-blue-300 px-3 py-1 rounded-full text-sm"
+                    >
+                      {genre.name} ({genre.count})
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Favorite Directors */}
+            {preferences.likedDirectors.length > 0 && (
+              <div>
+                <h3 className="text-slate-400 text-sm font-medium mb-2">Favorite Directors</h3>
+                <div className="flex flex-wrap gap-2">
+                  {preferences.likedDirectors.slice(0, 3).map((director) => (
+                    <span
+                      key={director.name}
+                      className="bg-purple-900/50 border border-purple-700/40 text-purple-300 px-3 py-1 rounded-full text-sm"
+                    >
+                      {director.name} ({director.count})
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Favorite Actors */}
+            {preferences.likedActors.length > 0 && (
+              <div>
+                <h3 className="text-slate-400 text-sm font-medium mb-2">Favorite Actors</h3>
+                <div className="flex flex-wrap gap-2">
+                  {preferences.likedActors.slice(0, 3).map((actor) => (
+                    <span
+                      key={actor.id}
+                      className="bg-green-900/50 border border-green-700/40 text-green-300 px-3 py-1 rounded-full text-sm"
+                    >
+                      {actor.name} ({actor.count})
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Preferred Era & Runtime */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {preferences.preferredEras.length > 0 && (
+                <div>
+                  <h3 className="text-slate-400 text-sm font-medium mb-2">Preferred Era</h3>
+                  <span className="bg-amber-900/50 border border-amber-700/40 text-amber-300 px-3 py-1 rounded-full text-sm">
+                    {preferences.preferredEras[0].decade} ({preferences.preferredEras[0].count} movies)
+                  </span>
+                </div>
+              )}
+
+              {preferences.preferredRuntime && (
+                <div>
+                  <h3 className="text-slate-400 text-sm font-medium mb-2">Preferred Length</h3>
+                  <span className="bg-cyan-900/50 border border-cyan-700/40 text-cyan-300 px-3 py-1 rounded-full text-sm">
+                    {formatRuntime(preferences.preferredRuntime.bucket)}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-4">
+            <p className="text-slate-400 mb-4">
+              Rate at least 5 movies to see your preferences
+            </p>
             <Link
               to="/recommendations"
               className="inline-block px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"

@@ -121,6 +121,52 @@ export interface DiscoverFilters {
   style?: MovieStyle;
 }
 
+// User Preferences Types
+export interface GenrePreference {
+  id: number;
+  name: string;
+  count: number;
+  avgRating: number;
+  confidence: number;
+}
+
+export interface DirectorPreference {
+  name: string;
+  count: number;
+  avgRating: number;
+  consistency: number;
+}
+
+export interface ActorPreference {
+  id: number;
+  name: string;
+  count: number;
+  avgRating: number;
+}
+
+export interface EraPreference {
+  decade: string;
+  count: number;
+  avgRating: number;
+}
+
+export interface RuntimePreference {
+  bucket: 'short' | 'medium' | 'long' | 'epic';
+  count: number;
+  avgRating: number;
+}
+
+export interface UserPreferences {
+  preferredGenres: GenrePreference[];
+  likedDirectors: DirectorPreference[];
+  likedActors: ActorPreference[];
+  dislikedGenres: GenrePreference[];
+  preferredEras: EraPreference[];
+  preferredRuntime: RuntimePreference | null;
+  ratingStyle: 'generous' | 'balanced' | 'critical';
+  totalRatedMovies: number;
+}
+
 // Auth API
 export const authAPI = {
   register: (email: string, username: string, password: string) =>
@@ -184,7 +230,7 @@ export const recommendationsAPI = {
     }),
 
   getPreferences: () =>
-    api.get('/api/recommendations/preferences')
+    api.get<UserPreferences>('/api/recommendations/preferences')
 };
 
 // Discover API
