@@ -148,13 +148,18 @@ frontend/
 - Quick rating buttons (Dislike, OK, Like, Love)
 - Add to Watchlist button
 - Responsive layout
+- **"In My Movies" badge** when movie is already rated
+- **Highlighted rating button** showing current rating
 
 **Props:**
 ```typescript
 {
   movie: TMDBMovie;
+  userRating?: Rating | null;  // Shows rating status if already rated
   onRate?: (tmdbId, rating) => void;
   onAddToWatchlist?: (tmdbId) => void;
+  onNotInterested?: (tmdbId) => void;
+  onClick?: (movie) => void;
   showActions?: boolean;
 }
 ```
