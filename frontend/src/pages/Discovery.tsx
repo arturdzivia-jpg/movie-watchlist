@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams, useLocation } from 'react-router-dom';
-import { discoverAPI, userMoviesAPI, watchlistAPI, DiscoverMovie, DiscoverCategory, Rating, moviesAPI, TMDBMovie, DiscoverFilters, MovieStyle } from '../services/api';
+import { discoverAPI, userMoviesAPI, watchlistAPI, DiscoverMovie, DiscoverCategory, Rating, moviesAPI, TMDBMovie, DiscoverFilters, MovieStyle, UserMovie } from '../services/api';
 import MovieCard from '../components/Movies/MovieCard';
 import MovieDetailModal from '../components/Movies/MovieDetailModal';
 import { SwipeCardStack, SwipeControls, RatingModal, FilterBar } from '../components/Discover';
@@ -31,7 +31,7 @@ const createEmptyCache = (): CategoryCache => ({
   seenIds: new Set()
 });
 
-const Recommendations: React.FC = () => {
+const Discovery: React.FC = () => {
   // URL search params for filter state
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
@@ -69,6 +69,9 @@ const Recommendations: React.FC = () => {
 
   // Movie detail modal state
   const [detailModal, setDetailModal] = useState<{ movie: DiscoverMovie | TMDBMovie; isOpen: boolean } | null>(null);
+
+  // Track user's rated movies (to show existing ratings in modal)
+  const [ratedMoviesMap, setRatedMoviesMap] = useState<Map<number, UserMovie>>(new Map());
 
   // Filter name from router state (passed from MetadataLink)
   const [filterDisplayInfo, setFilterDisplayInfo] = useState<{ name: string; type: MetadataType } | null>(null);
@@ -144,6 +147,21 @@ const Recommendations: React.FC = () => {
       setFilterVersion(v => v + 1);
     }
   }, [filters.genre, filters.style, filters.actor, filters.director, filters.company]);
+
+  // Fetch user's rated movies on mount (to check if modal movie is already rated)
+  useEffect(() => {
+    const fetchRatedMovies = async () => {
+      try {
+        const response = await userMoviesAPI.getAll();
+        const map = new Map<number, UserMovie>();
+        response.data.forEach(um => map.set(um.movie.tmdbId, um));
+        setRatedMoviesMap(map);
+      } catch (error) {
+        console.error('Failed to fetch rated movies:', error);
+      }
+    };
+    fetchRatedMovies();
+  }, []);
 
   // View mode state (persisted to localStorage)
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
@@ -326,7 +344,13 @@ const Recommendations: React.FC = () => {
 
   const handleRate = async (tmdbId: number, rating: Rating) => {
     try {
-      await userMoviesAPI.add(tmdbId, rating, true);
+      const response = await userMoviesAPI.add(tmdbId, rating, true);
+      // Add to rated movies map so modal shows the rating if reopened
+      setRatedMoviesMap(prev => {
+        const updated = new Map(prev);
+        updated.set(tmdbId, response.data);
+        return updated;
+      });
       removeMovieFromCaches(tmdbId);
     } catch (error: any) {
       console.error('Failed to rate movie:', error);
@@ -386,6 +410,50 @@ const Recommendations: React.FC = () => {
     if (!detailModal) return;
     await handleAddToWatchlist(detailModal.movie.id);
     setDetailModal(null);
+  };
+
+  const handleModalUpdateRating = async (rating: Rating) => {
+    if (!detailModal) return;
+    const existingRating = ratedMoviesMap.get(detailModal.movie.id);
+    if (!existingRating) return;
+
+    try {
+      await userMoviesAPI.update(existingRating.id, rating);
+      // Update the map with new rating
+      setRatedMoviesMap(prev => {
+        const updated = new Map(prev);
+        const existing = updated.get(detailModal.movie.id);
+        if (existing) {
+          updated.set(detailModal.movie.id, { ...existing, rating });
+        }
+        return updated;
+      });
+      showToast('Rating updated');
+    } catch (error) {
+      console.error('Failed to update rating:', error);
+      alert('Failed to update rating');
+    }
+  };
+
+  const handleModalDelete = async () => {
+    if (!detailModal) return;
+    const existingRating = ratedMoviesMap.get(detailModal.movie.id);
+    if (!existingRating) return;
+
+    try {
+      await userMoviesAPI.delete(existingRating.id);
+      // Remove from the map
+      setRatedMoviesMap(prev => {
+        const updated = new Map(prev);
+        updated.delete(detailModal.movie.id);
+        return updated;
+      });
+      setDetailModal(null);
+      showToast('Rating removed');
+    } catch (error) {
+      console.error('Failed to delete rating:', error);
+      alert('Failed to delete rating');
+    }
   };
 
   // Swipe handlers
@@ -726,13 +794,16 @@ const Recommendations: React.FC = () => {
         <MovieDetailModal
           movie={detailModal.movie}
           tmdbId={detailModal.movie.id}
+          userRating={ratedMoviesMap.get(detailModal.movie.id)?.rating}
           onClose={handleCloseModal}
-          onRate={handleModalRate}
-          onAddToWatchlist={handleModalAddToWatchlist}
+          onRate={!ratedMoviesMap.has(detailModal.movie.id) ? handleModalRate : undefined}
+          onUpdateRating={ratedMoviesMap.has(detailModal.movie.id) ? handleModalUpdateRating : undefined}
+          onDelete={ratedMoviesMap.has(detailModal.movie.id) ? handleModalDelete : undefined}
+          onAddToWatchlist={!ratedMoviesMap.has(detailModal.movie.id) ? handleModalAddToWatchlist : undefined}
         />
       )}
     </div>
   );
 };
 
-export default Recommendations;
+export default Discovery;

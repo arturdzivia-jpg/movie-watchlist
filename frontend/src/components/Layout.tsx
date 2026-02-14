@@ -16,7 +16,7 @@ const Layout: React.FC = () => {
     { path: '/', label: 'Dashboard' },
     { path: '/movies', label: 'My Movies' },
     { path: '/watchlist', label: 'Watchlist' },
-    { path: '/recommendations', label: 'Recommendations' }
+    { path: '/discovery', label: 'Discovery' }
   ];
 
   const isActive = (path: string) => {

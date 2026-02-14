@@ -125,7 +125,7 @@ const Watchlist: React.FC = () => {
           <h2 className="text-xl font-semibold text-white mb-2">Your watchlist is empty</h2>
           <p className="text-slate-400 mb-4">Add movies you want to watch later!</p>
           <Link
-            to="/recommendations"
+            to="/discovery"
             className="inline-block px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
           >
             Discover Movies

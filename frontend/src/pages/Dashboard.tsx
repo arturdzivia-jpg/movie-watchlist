@@ -124,12 +124,12 @@ const Dashboard: React.FC = () => {
         </Link>
 
         <Link
-          to="/recommendations"
+          to="/discovery"
           className="bg-slate-800 rounded-lg p-6 shadow-lg hover:bg-slate-700 transition-colors border border-slate-700"
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-slate-400 text-sm font-medium">Get Recommendations</p>
+              <p className="text-slate-400 text-sm font-medium">Discover New Movies</p>
               <p className="text-2xl font-bold text-blue-400 mt-2">Discover ✨</p>
             </div>
             <div className="text-4xl">🔍</div>
@@ -210,7 +210,7 @@ const Dashboard: React.FC = () => {
           <div className="mt-6 text-center">
             <p className="text-slate-400 mb-4">You haven't rated any movies yet!</p>
             <Link
-              to="/recommendations"
+              to="/discovery"
               className="inline-block px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
             >
               Discover Movies
@@ -393,7 +393,7 @@ const Dashboard: React.FC = () => {
               Rate at least 5 movies to see your preferences
             </p>
             <Link
-              to="/recommendations"
+              to="/discovery"
               className="inline-block px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
             >
               Discover Movies

@@ -31,7 +31,7 @@ const MetadataLink: React.FC<MetadataLinkProps> = ({
 
     // Navigate to discover page with filter
     // Pass the entity name via router state for display
-    navigate(`/recommendations?${type}=${id}`, {
+    navigate(`/discovery?${type}=${id}`, {
       state: { filterName: name, filterType: type }
     });
   };

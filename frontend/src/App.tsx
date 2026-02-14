@@ -8,7 +8,7 @@ import Register from './components/Auth/Register';
 import Dashboard from './pages/Dashboard';
 import MyMovies from './pages/MyMovies';
 import Watchlist from './pages/Watchlist';
-import Recommendations from './pages/Recommendations';
+import Discovery from './pages/Discovery';
 
 const App: React.FC = () => {
   return (
@@ -29,7 +29,7 @@ const App: React.FC = () => {
             <Route index element={<Dashboard />} />
             <Route path="movies" element={<MyMovies />} />
             <Route path="watchlist" element={<Watchlist />} />
-            <Route path="recommendations" element={<Recommendations />} />
+            <Route path="discovery" element={<Discovery />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />
