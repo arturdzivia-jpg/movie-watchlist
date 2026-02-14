@@ -12,6 +12,7 @@ interface Genre {
 
 const Watchlist: React.FC = () => {
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
+  const [allGenreIds, setAllGenreIds] = useState<Set<number>>(new Set()); // Store all genres from unfiltered list
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [markingWatched, setMarkingWatched] = useState<string | null>(null);
@@ -27,16 +28,10 @@ const Watchlist: React.FC = () => {
   const [notesInput, setNotesInput] = useState<string>('');
   const [savingNotes, setSavingNotes] = useState(false);
 
-  // Get unique genres from watchlist for filter dropdown
+  // Get unique genres from stored genre IDs (not from filtered watchlist)
   const availableGenres = useMemo(() => {
-    const genreSet = new Set<number>();
-    watchlist.forEach(item => {
-      if (item.movie.genres && Array.isArray(item.movie.genres)) {
-        (item.movie.genres as Genre[]).forEach((g: Genre) => genreSet.add(g.id));
-      }
-    });
-    return GENRES.filter((g: Genre) => genreSet.has(g.id));
-  }, [watchlist]);
+    return GENRES.filter((g: Genre) => allGenreIds.has(g.id));
+  }, [allGenreIds]);
 
   const loadWatchlist = useCallback(async () => {
     try {
@@ -48,6 +43,17 @@ const Watchlist: React.FC = () => {
         genre: filterGenre
       });
       setWatchlist(response.data);
+
+      // When loading without a genre filter, update the available genres
+      if (!filterGenre) {
+        const genreSet = new Set<number>();
+        response.data.forEach((item: WatchlistItem) => {
+          if (item.movie.genres && Array.isArray(item.movie.genres)) {
+            (item.movie.genres as Genre[]).forEach((g: Genre) => genreSet.add(g.id));
+          }
+        });
+        setAllGenreIds(genreSet);
+      }
     } catch (err) {
       console.error('Failed to load watchlist:', err);
       setError('Failed to load watchlist. Please try again.');
@@ -60,20 +66,39 @@ const Watchlist: React.FC = () => {
     loadWatchlist();
   }, [loadWatchlist]);
 
+  // Helper to recalculate available genres from a watchlist
+  const recalculateGenres = useCallback((items: WatchlistItem[]) => {
+    const genreSet = new Set<number>();
+    items.forEach((item: WatchlistItem) => {
+      if (item.movie.genres && Array.isArray(item.movie.genres)) {
+        (item.movie.genres as Genre[]).forEach((g: Genre) => genreSet.add(g.id));
+      }
+    });
+    setAllGenreIds(genreSet);
+  }, []);
+
   const handleRemove = async (id: string) => {
     if (!window.confirm('Remove this movie from your watchlist?')) {
       return;
     }
 
     const previousWatchlist = watchlist;
+    const newWatchlist = watchlist.filter(item => item.id !== id);
     // Optimistic update
-    setWatchlist(watchlist.filter(item => item.id !== id));
+    setWatchlist(newWatchlist);
+    // Update available genres if not filtered
+    if (!filterGenre) {
+      recalculateGenres(newWatchlist);
+    }
     try {
       await watchlistAPI.remove(id);
     } catch (err) {
       console.error('Failed to remove from watchlist:', err);
       // Rollback on error
       setWatchlist(previousWatchlist);
+      if (!filterGenre) {
+        recalculateGenres(previousWatchlist);
+      }
       setError('Failed to remove from watchlist. Please try again.');
       setTimeout(() => setError(null), 3000);
     }
@@ -81,15 +106,23 @@ const Watchlist: React.FC = () => {
 
   const handleMarkWatched = async (id: string, rating: Rating) => {
     const previousWatchlist = watchlist;
+    const newWatchlist = watchlist.filter(item => item.id !== id);
     try {
       setMarkingWatched(id);
       // Optimistic update
-      setWatchlist(watchlist.filter(item => item.id !== id));
+      setWatchlist(newWatchlist);
+      // Update available genres if not filtered
+      if (!filterGenre) {
+        recalculateGenres(newWatchlist);
+      }
       await watchlistAPI.markWatched(id, rating);
     } catch (err) {
       console.error('Failed to mark as watched:', err);
       // Rollback on error
       setWatchlist(previousWatchlist);
+      if (!filterGenre) {
+        recalculateGenres(previousWatchlist);
+      }
       setError('Failed to mark as watched. Please try again.');
       setTimeout(() => setError(null), 3000);
     } finally {
