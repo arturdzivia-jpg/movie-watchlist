@@ -134,6 +134,31 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
 
       movies = recommendations.slice(0, 20);
       totalPages = 10; // Approximate - recommendations are generated dynamically
+
+      // Fallback: If genre filter returns no results, fetch from TMDB discover
+      // This handles cases like Documentary where user may not have rated any
+      if (movies.length === 0 && genre) {
+        const genreFilter = buildGenreFilter();
+        const languageFilters = buildLanguageFilters();
+
+        const fallbackResponse = await tmdbService.discoverMovies({
+          page,
+          with_genres: genreFilter,
+          sort_by: 'popularity.desc',
+          'vote_count.gte': getVoteCountThreshold(MIN_VOTE_COUNT),
+          ...languageFilters
+        });
+
+        let fallbackMovies = fallbackResponse.results.filter(m => !excludedIds.has(m.id));
+
+        // Apply style filter for cartoons
+        if (style === 'cartoons') {
+          fallbackMovies = fallbackMovies.filter(m => m.original_language !== 'ja');
+        }
+
+        movies = fallbackMovies;
+        totalPages = fallbackResponse.total_pages;
+      }
     } else {
       // Get date range for new releases (last 6 months)
       const today = new Date();
