@@ -521,6 +521,11 @@ class RecommendationService {
     let score = 0;
     const reasons: string[] = [];
 
+    // We'll collect reasons by priority - more specific reasons should come first
+    const specificReasons: string[] = []; // Director, actor, collection, keywords
+    const genreReasons: string[] = [];    // Genre matches (less specific)
+    const contextReasons: string[] = [];  // Recency, rating, etc.
+
     // ===== GENRE MATCHING =====
     const movieGenreIds = movie.genre_ids || [];
     const preferredGenreIds = preferences.preferredGenres.map(g => g.id);
@@ -549,7 +554,7 @@ class RecommendationService {
         .filter((name): name is string => name !== null && name !== undefined);
 
       if (genreNames.length > 0) {
-        reasons.push(`Matches your favorite genres: ${genreNames.slice(0, 2).join(', ')}`);
+        genreReasons.push(`Matches your favorite genres: ${genreNames.slice(0, 2).join(', ')}`);
       }
     }
 
@@ -567,7 +572,7 @@ class RecommendationService {
         score += Math.min(keywordScore, weights.keyword);
 
         if (matchingKeywords.length >= 2) {
-          reasons.push(`Themes you enjoy: ${matchingKeywords.slice(0, 2).map(k => k.name).join(', ')}`);
+          specificReasons.push(`Themes you enjoy: ${matchingKeywords.slice(0, 2).map(k => k.name).join(', ')}`);
         }
       }
     }
@@ -584,7 +589,7 @@ class RecommendationService {
           weights.director
         );
         score += directorScore;
-        reasons.push(`From ${movie.director}`);
+        specificReasons.push(`From director ${movie.director}`);
       }
     }
 
@@ -602,7 +607,7 @@ class RecommendationService {
           }
         }
         score += Math.min(actorScore, weights.actor);
-        reasons.push(`With ${matchingActors.slice(0, 2).map(a => a.name).join(', ')}`);
+        specificReasons.push(`Starring ${matchingActors.slice(0, 2).map(a => a.name).join(', ')}`);
       }
     }
 
@@ -614,7 +619,7 @@ class RecommendationService {
       if (collectionMatch) {
         const collectionScore = Math.min(collectionMatch.count * 5, 15);
         score += collectionScore;
-        reasons.push(`Part of ${movie.belongs_to_collection.name}`);
+        specificReasons.push(`Part of ${movie.belongs_to_collection.name}`);
       }
     }
 
@@ -631,7 +636,7 @@ class RecommendationService {
           10
         );
         score += companyScore;
-        reasons.push(`From ${matchingCompany.name}`);
+        specificReasons.push(`From ${matchingCompany.name}`);
       }
     }
 
@@ -664,7 +669,7 @@ class RecommendationService {
     score += popularityScore;
 
     if (movie.vote_average >= 7.5) {
-      reasons.push(`Highly rated (${movie.vote_average.toFixed(1)}/10)`);
+      contextReasons.push(`Highly rated (${movie.vote_average.toFixed(1)}/10)`);
     }
 
     // ===== VOTE COUNT (reliability) =====
@@ -678,10 +683,10 @@ class RecommendationService {
 
     if (yearDiff <= 1) {
       score += weights.recency * 1.5;
-      reasons.push('New release');
+      contextReasons.push('New release');
     } else if (yearDiff <= 3) {
       score += weights.recency;
-      reasons.push('Recent release');
+      contextReasons.push('Recent release');
     } else if (yearDiff <= 10) {
       score += weights.recency * 0.5;
     }
@@ -708,6 +713,12 @@ class RecommendationService {
       // For generous raters, emphasize match quality over raw ratings
       // (already handled by genre/director/actor matching being weighted)
     }
+
+    // Combine reasons with priority: specific > genre > context
+    // This ensures more personalized reasons appear first
+    reasons.push(...specificReasons);
+    reasons.push(...genreReasons);
+    reasons.push(...contextReasons);
 
     // Default reason if none
     if (reasons.length === 0) {
