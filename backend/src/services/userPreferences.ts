@@ -191,11 +191,12 @@ class UserPreferencesService {
       const ratingWeight = getRatingWeight(userMovie.rating);
       if (Array.isArray(genres) && ratingWeight > 0) {
         genres.forEach(genre => {
+          if (!genre || !genre.id) return; // Skip invalid genres
           const existing = genreMap.get(genre.id);
           if (existing) {
             existing.ratings.push(ratingWeight);
           } else {
-            genreMap.set(genre.id, { id: genre.id, name: genre.name, ratings: [ratingWeight] });
+            genreMap.set(genre.id, { id: genre.id, name: genre.name || 'Unknown', ratings: [ratingWeight] });
           }
         });
       }

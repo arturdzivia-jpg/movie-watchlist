@@ -32,6 +32,29 @@ const MOOD_GENRE_MAPPING: Record<Mood, number[]> = {
   romantic: [10749, 18]             // Romance, Drama
 };
 
+// TMDB genre ID to name mapping (fallback)
+const GENRE_NAMES: Record<number, string> = {
+  28: 'Action',
+  12: 'Adventure',
+  16: 'Animation',
+  35: 'Comedy',
+  80: 'Crime',
+  99: 'Documentary',
+  18: 'Drama',
+  10751: 'Family',
+  14: 'Fantasy',
+  36: 'History',
+  27: 'Horror',
+  10402: 'Music',
+  9648: 'Mystery',
+  10749: 'Romance',
+  878: 'Science Fiction',
+  10770: 'TV Movie',
+  53: 'Thriller',
+  10752: 'War',
+  37: 'Western'
+};
+
 // Default weights (sum to ~100)
 const DEFAULT_WEIGHTS: UserWeights = {
   genre: 25,
@@ -517,9 +540,13 @@ class RecommendationService {
       }
       score += Math.min(genreScore * weights.genre, weights.genre * 2);
 
-      const genreNames = preferences.preferredGenres
-        .filter(g => matchingGenres.includes(g.id))
-        .map(g => g.name);
+      // Get genre names, using fallback lookup if name is missing
+      const genreNames = matchingGenres
+        .map(id => {
+          const pref = preferences.preferredGenres.find(g => g.id === id);
+          return pref?.name || GENRE_NAMES[id] || null;
+        })
+        .filter((name): name is string => name !== null && name !== undefined);
 
       if (genreNames.length > 0) {
         reasons.push(`Matches your favorite genres: ${genreNames.slice(0, 2).join(', ')}`);
