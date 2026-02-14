@@ -34,7 +34,7 @@ A full-stack web application for managing movie watchlists with personalized rec
   - View statistics and rating distribution
   - Filter discover page by genre and style (Movies, Anime, Cartoons)
   - Toggle between list and grid view on My Movies page
-  - View full movie details in modal (cast, director, runtime)
+  - View full movie details in modal (cast portraits, trailers, backdrop, tagline)
 
 - **Technical Features:**
   - Multi-user support with data isolation
@@ -175,8 +175,10 @@ Users
 Movies (TMDB cache)
 ├─ id (uuid, primary key)
 ├─ tmdbId (unique, integer)
-├─ title, overview, posterPath
-├─ genres (json), director, cast (json)
+├─ title, overview, posterPath, backdropPath
+├─ genres (json), director, directorId
+├─ cast (json with id, name, character, profilePath)
+├─ runtime, tagline, keywords (json)
 └─ lastUpdated (30-day cache)
 
 UserMovies (ratings)
@@ -239,7 +241,7 @@ Protected (requires auth):
   /            → Dashboard (statistics)
   /movies      → My Movies (rated movies list/grid with detail modal)
   /watchlist   → Watchlist (movies to watch with detail modal)
-  /recommendations → Discover movies (grid/swipe view, genre/style filters)
+  /discovery   → Discovery page (grid/swipe view, genre/style filters)
 ```
 
 ---
@@ -915,13 +917,13 @@ The following features are already implemented in the codebase:
 - **Genre & Style Filtering:** Filter discover page by any TMDB genre and style (Movies, Anime, Cartoons) - grid view only
 - **Genre Filtering in Swipe Mode:** Swipe view shows genre filter only (no style filter) for cleaner UI
 - **View Mode Toggle:** My Movies supports both list and grid views (persisted to localStorage)
-- **Movie Detail Modal:** Click any movie to see full details including cast, director, runtime, studios
+- **Movie Detail Modal:** Enhanced modal with backdrop header image, cast portraits with photos, embedded YouTube trailers, movie tagline, and clickable metadata (genres, actors, directors, studios)
 - **Swipe Discovery:** Tinder-like card swiping with full-height poster cards, gradient overlay for text, and animated transitions for all actions (drag, buttons, keyboard)
 - **Clickable Metadata:** Genres, actors, directors, and studios are clickable links throughout the app. Clicking navigates to the Discover page filtered by that item:
   - **In Movie Detail Modal:** Click genre badges, director name, actor names, or studio names
   - **In My Movies:** Click genre badges on movie cards
   - **In Dashboard:** Click preference badges (favorite genres, actors, directors, studios)
-  - **URL-based Filters:** Filter state is stored in URL query params for shareable/bookmarkable links (e.g., `/recommendations?actor=123&genre=28`)
+  - **URL-based Filters:** Filter state is stored in URL query params for shareable/bookmarkable links (e.g., `/discovery?actor=123&genre=28`)
 
 ### Mobile-Responsive Design
 - **Hamburger Navigation:** Collapsible menu on mobile devices (< 768px)
